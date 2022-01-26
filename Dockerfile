@@ -11,8 +11,22 @@ ENV GO_VERSION=1.16
 
 WORKDIR /app
 
-#Get mosquitto build dependencies.
-RUN apt-get update && apt-get install --no-install-recommends  -y libwebsockets8 libwebsockets-dev libc-ares2 libc-ares-dev openssl uuid uuid-dev wget build-essential git
+# Get mosquitto build dependencies.
+RUN apt-get update -y && \
+    apt-get install --no-install-recommends -y \
+    libwebsockets8 \
+    libwebsockets-dev \
+    libc-ares2 \
+    libc-ares-dev \
+    openssl \
+    uuid \
+    uuid-dev \
+    wget \
+    build-essential \
+    git \
+    ca-certificates \
+    && update-ca-certificates
+
 RUN mkdir -p mosquitto/auth mosquitto/conf.d
 
 RUN wget http://mosquitto.org/files/source/mosquitto-${MOSQUITTO_VERSION}.tar.gz
