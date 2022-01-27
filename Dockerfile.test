@@ -1,6 +1,6 @@
-FROM thinxcloud/broker
+FROM thinxcloud/mosquitto
 
-LABEL name="thinxcloud/broker" version="1.4.8292"
+LABEL name="thinxcloud/mosquitto" version="1.4.8292"
 
 # for early testing
 RUN apt install -y mosquitto-clients
