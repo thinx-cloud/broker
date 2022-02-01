@@ -1,6 +1,6 @@
 
 #Use debian:buster as a builder and then copy everything.
-FROM debian:buster
+FROM debian:latest
 
 #Set mosquitto and plugin versions.
 #Change them for your needs.
@@ -53,9 +53,9 @@ RUN export PATH=$PATH:/usr/local/go/bin && \
     make
 
 #Start from a new image.
-FROM debian:buster
+FROM debian:latest
 
-LABEL name="thinxcloud/mosquitto" version="1.4.8292"
+LABEL name="thinxcloud/mosquitto" version="1.5.6"
 
 # Get mosquitto dependencies.
 RUN apt-get update && apt-get install --no-install-recommends -y libwebsockets8 libc-ares2 openssl uuid
