@@ -17,5 +17,6 @@ workflows:
       - docker/publish:
           name: Build and Publish to Docker Hub
           image: thinxcloud/mosquitto
+          tag: latest
           context:
             - dockerhub
