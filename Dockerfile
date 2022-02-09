@@ -76,7 +76,7 @@ COPY --from=0 /usr/local/sbin/mosquitto /usr/sbin/mosquitto
 
 # This file should be mapped from external volume and must include password for thinx-redis
 #COPY ./goauth/docker/conf/mosquitto.conf /etc/mosquitto/mosquitto.conf
-COPY ./goauth/docker/conf/conf.d/go-auth.conf /etc/mosquitto/conf.d/go-auth.conf
+#COPY ./goauth/docker/conf/conf.d/go-auth.conf /etc/mosquitto/conf.d/go-auth.conf
 
 # Expose tcp and websocket ports as defined at mosquitto.conf (change accordingly).
 EXPOSE 1883 8883 1884
