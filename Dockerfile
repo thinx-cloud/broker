@@ -24,6 +24,7 @@ RUN apt-get update -y && \
     wget \
     build-essential \
     git \
+    redis \
     ca-certificates \
     && update-ca-certificates
 
@@ -73,7 +74,8 @@ COPY --from=0 /app/pw /mosquitto/pw
 COPY --from=0 /app/go-auth.so /mosquitto/go-auth.so
 COPY --from=0 /usr/local/sbin/mosquitto /usr/sbin/mosquitto
 
-COPY ./goauth/docker/conf/mosquitto.conf /etc/mosquitto/mosquitto.conf
+# This file should be mapped from external volume and must include password for thinx-redis
+#COPY ./goauth/docker/conf/mosquitto.conf /etc/mosquitto/mosquitto.conf
 COPY ./goauth/docker/conf/conf.d/go-auth.conf /etc/mosquitto/conf.d/go-auth.conf
 
 # Expose tcp and websocket ports as defined at mosquitto.conf (change accordingly).
