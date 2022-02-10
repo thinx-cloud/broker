@@ -55,7 +55,7 @@ RUN export PATH=$PATH:/usr/local/go/bin && \
 #Start from a new image.
 FROM debian:buster
 
-LABEL name="thinxcloud/mosquitto" version="1.5.6"
+LABEL name="thinxcloud/mosquitto" version="1.5.7"
 
 # Get mosquitto dependencies.
 RUN apt-get update && apt-get install --no-install-recommends -y libwebsockets8 libc-ares2 openssl uuid redis
