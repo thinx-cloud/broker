@@ -6,7 +6,6 @@ LABEL name="thinxcloud/mosquitto" version="1.5.7"
 RUN apt install -y mosquitto-clients
 
 # mock directory structure for mosquitto data
-COPY ./test/mosquitto /mosquitto
 COPY ./test/mosquitto/mosquitto.conf /etc/mosquitto/mosquitto.conf
 
 # this must happen in the run-script!!! othervise env-var can not be externalized; happens only in test of files backend
