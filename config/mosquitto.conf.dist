@@ -1,3 +1,5 @@
+# config/mosquitto.conf.dist
+
 #
 # General Mosquitto Settings
 #
