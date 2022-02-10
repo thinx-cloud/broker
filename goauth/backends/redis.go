@@ -68,19 +68,14 @@ func NewRedis(authOpts map[string]string, logLevel log.Level, hasher hashing.Has
 
 	if redisHost, ok := authOpts["redis_host"]; ok {
 		redis.Host = redisHost
-		log.Debugf("1 - redis_host: %s", redisHost)
 	}
 
 	if redisPort, ok := authOpts["redis_port"]; ok {
 		redis.Port = redisPort
-		log.Debugf("2 - redis_port: %s", redisPort)
 	}
 
 	if redisPassword, ok := authOpts["redis_password"]; ok {
 		redis.Password = redisPassword
-		log.Debugf("3 - redis_password: %s", redisPassword)
-	} else {
-		log.Debugf("ERROR redis_password not found in configuration.")
 	}
 
 	if redisDB, ok := authOpts["redis_db"]; ok {
