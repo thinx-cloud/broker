@@ -8,7 +8,6 @@ RUN apt install -y mosquitto-clients
 # mock directory structure for mosquitto data
 COPY ./test/mosquitto /mosquitto
 COPY ./test/mosquitto/conf.d/mosquitto.conf /etc/mosquitto/mosquitto.conf
-COPY ./test/mosquitto/conf.d/mosquitto.conf /etc/mosquitto/conf.d/go-auth.conf
 
 # this must happen in the run-script!!! othervise env-var can not be externalized; happens only in test
 RUN PASS=$(/mosquitto/pw -h bcrypt -c 10 -p mosquitto) && \
