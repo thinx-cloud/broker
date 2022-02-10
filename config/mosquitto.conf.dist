@@ -14,8 +14,8 @@ log_timestamp_format %Y-%m-%dT%H:%M:%S
 # File-based authentication (in case the Go Auth is not used)
 
 allow_anonymous false
-password_file /mqtt/auth/thinx.pw
-acl_file /mqtt/auth/thinx.acl
+#password_file /mqtt/auth/thinx.pw
+#acl_file /mqtt/auth/thinx.acl
 
 # Connections and SSL certificates
 
@@ -44,7 +44,7 @@ keepalive_interval 120
 auth_plugin /mosquitto/go-auth.so
 
 auth_opt_log_level debug
-auth_opt_backends files, redis
+auth_opt_backends redis
 auth_opt_check_prefix false
 
 auth_opt_hasher bcrypt
@@ -65,5 +65,5 @@ auth_opt_redis_password changeme!
 
 auth_opt_redis_disable_superuser true
 
-auth_opt_password_path /mqtt/auth/thinx.pw
-auth_opt_acl_path /mqtt/auth/thinx.acl
+#auth_opt_password_path /mqtt/auth/thinx.pw
+#auth_opt_acl_path /mqtt/auth/thinx.acl
