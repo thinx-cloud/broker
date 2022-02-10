@@ -10,6 +10,7 @@ COPY ./test/mosquitto /mosquitto
 COPY ./test/mosquitto/mosquitto.conf /etc/mosquitto/mosquitto.conf
 
 # this must happen in the run-script!!! othervise env-var can not be externalized; happens only in test
-RUN PASS=$(/mosquitto/pw -h bcrypt -c 10 -p mosquitto) && \
+RUN mkdir -p /mqtt/auth && \
+    PASS=$(/mosquitto/pw -h bcrypt -c 10 -p mosquitto) && \
     echo "thinx:${PASS}" > /mqtt/auth/thinx.pw && \
     echo "Written thinx:${PASS} to /mqtt/auth/thinx.pw"
