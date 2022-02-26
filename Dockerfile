@@ -18,6 +18,7 @@ RUN apt-get update -y && \
     libwebsockets-dev \
     libc-ares2 \
     libc-ares-dev \
+    cmake \
     openssl \
     uuid \
     uuid-dev \
