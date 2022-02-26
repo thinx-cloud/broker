@@ -33,7 +33,7 @@ RUN wget http://mosquitto.org/files/source/mosquitto-${MOSQUITTO_VERSION}.tar.gz
 RUN tar xzvf mosquitto-${MOSQUITTO_VERSION}.tar.gz && rm mosquitto-${MOSQUITTO_VERSION}.tar.gz 
 
 RUN wget https://github.com/DaveGamble/cJSON/archive/refs/tags/v1.7.15.tar.gz
-RUN tar v1.7.15.tar.gz && rm v1.7.15.tar.gz
+RUN tar xzvf v1.7.15.tar.gz && rm v1.7.15.tar.gz
 
 #Build cJSON
 RUN cd v1.7.15 && mkdir build && cd build && cmake .. -DENABLE_CJSON_UTILS=On -DENABLE_CJSON_TEST=Off -DCMAKE_INSTALL_PREFIX=/usr && make install && cd ..
