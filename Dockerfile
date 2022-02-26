@@ -50,12 +50,12 @@ COPY ./goauth ./
 RUN export PATH=$PATH:/usr/local/go/bin && \
     export CGO_CFLAGS="-I/usr/local/include -fPIC" && \
     export CGO_LDFLAGS="-shared" && \
-    make
+    make WITH_CJSON=no
 
 #Start from a new image.
 FROM debian:buster
 
-LABEL name="thinxcloud/mosquitto" version="1.5.7"
+LABEL name="thinxcloud/mosquitto" version="2.0.14"
 
 # Get mosquitto dependencies.
 RUN apt-get update && apt-get install --no-install-recommends -y libwebsockets8 libc-ares2 openssl uuid redis

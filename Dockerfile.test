@@ -1,4 +1,4 @@
-FROM thinxcloud/mosquitto
+FROM thinxcloud/mosquitto:2.0.14
 
 LABEL name="thinxcloud/mosquitto" version="1.5.7"
 
