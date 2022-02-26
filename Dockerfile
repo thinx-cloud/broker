@@ -36,7 +36,7 @@ RUN wget https://github.com/DaveGamble/cJSON/archive/refs/tags/v1.7.15.tar.gz
 RUN tar xzvf v1.7.15.tar.gz && rm v1.7.15.tar.gz
 
 #Build cJSON
-RUN cd v1.7.15 && mkdir build && cd build && cmake .. -DENABLE_CJSON_UTILS=On -DENABLE_CJSON_TEST=Off -DCMAKE_INSTALL_PREFIX=/usr && make install && cd ..
+RUN cd cJSON-1.7.15 && mkdir build && cd build && cmake .. -DENABLE_CJSON_UTILS=On -DENABLE_CJSON_TEST=Off -DCMAKE_INSTALL_PREFIX=/usr && make install && cd ..
 
 #Build mosquitto.
 RUN cd mosquitto-${MOSQUITTO_VERSION} && make WITH_WEBSOCKETS=yes && make install && cd ..
