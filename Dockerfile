@@ -33,10 +33,10 @@ RUN wget http://mosquitto.org/files/source/mosquitto-${MOSQUITTO_VERSION}.tar.gz
 RUN tar xzvf mosquitto-${MOSQUITTO_VERSION}.tar.gz && rm mosquitto-${MOSQUITTO_VERSION}.tar.gz 
 
 RUN wget https://github.com/DaveGamble/cJSON/archive/refs/tags/v1.7.15.tar.gz
-RUN tar xzvf cJSON-1.7.15.tar.gz && rm cJSON-1.7.15.tar.gz
+RUN tar v1.7.15.tar.gz && rm v1.7.15.tar.gz
 
 #Build cJSON
-RUN cd cJSON-1.7.15 && mkdir build && cd build && cmake .. -DENABLE_CJSON_UTILS=On -DENABLE_CJSON_TEST=Off -DCMAKE_INSTALL_PREFIX=/usr && make install
+RUN cd v1.7.15 && mkdir build && cd build && cmake .. -DENABLE_CJSON_UTILS=On -DENABLE_CJSON_TEST=Off -DCMAKE_INSTALL_PREFIX=/usr && make install && cd ..
 
 #Build mosquitto.
 RUN cd mosquitto-${MOSQUITTO_VERSION} && make WITH_WEBSOCKETS=yes && make install && cd ..
@@ -56,7 +56,7 @@ COPY ./goauth ./
 RUN export PATH=$PATH:/usr/local/go/bin && \
     export CGO_CFLAGS="-I/usr/local/include -fPIC" && \
     export CGO_LDFLAGS="-shared" && \
-    make WITH_CJSON=no
+    make WITH_CJSON=no WITH_DOCS=no WITH_BUNDLED_DEPS=no
 
 #Start from a new image.
 FROM debian:buster
