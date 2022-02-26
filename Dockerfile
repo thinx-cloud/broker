@@ -5,7 +5,7 @@ FROM debian:buster
 #Set mosquitto and plugin versions.
 #Change them for your needs.
 # Latest is mosquitto-2.0.7 (04-Feb-2021) - build fails with missing cJSON dependency, originally 1.6.10
-ENV MOSQUITTO_VERSION=2.0.10
+ENV MOSQUITTO_VERSION=2.0.14
 ENV PLUGIN_VERSION=0.6.1
 ENV GO_VERSION=1.16
 
@@ -40,7 +40,7 @@ RUN tar xzvf v1.7.15.tar.gz && rm v1.7.15.tar.gz
 RUN cd cJSON-1.7.15 && mkdir build && cd build && cmake .. -DENABLE_CJSON_UTILS=On -DENABLE_CJSON_TEST=Off -DCMAKE_INSTALL_PREFIX=/usr && make install && cd ..
 
 #Build mosquitto.
-RUN cd mosquitto-${MOSQUITTO_VERSION} && make WITH_WEBSOCKETS=yes && make install && cd ..
+RUN cd mosquitto-${MOSQUITTO_VERSION} && make WITH_WEBSOCKETS=no && make install && cd ..
 
 #Get Go.
 RUN export GO_ARCH=$(uname -m | sed -es/x86_64/amd64/ -es/armv7l/armv6l/ -es/aarch64/arm64/) && \
