@@ -2,7 +2,7 @@
 ARG MOSQUITTO_VERSION=1.6.14
 
 # Use debian:stable-slim as a builder for Mosquitto and dependencies.
-FROM debian:stable-slim as mosquitto_builder
+FROM debian:bookworm-slim as mosquitto_builder
 ARG MOSQUITTO_VERSION
 
 # Get mosquitto build dependencies.
@@ -84,7 +84,7 @@ RUN go build -buildmode=c-archive go-auth.go && \
 
 
 #Start from a new image.
-FROM debian:stable-slim
+FROM debian:bookworm-slim
 
 RUN apt update && apt install -y libc-ares2 openssl uuid tini wget cmake libssl-dev
 
