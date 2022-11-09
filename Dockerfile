@@ -1,6 +1,6 @@
 
 #Use debian:buster as a builder and then copy everything.
-FROM debian:latest
+FROM debian:buster
 
 #Set mosquitto and plugin versions.
 #Change them for your needs.
@@ -53,7 +53,7 @@ RUN export PATH=$PATH:/usr/local/go/bin && \
     make
 
 #Start from a new image.
-FROM debian:latest
+FROM debian:buster
 
 LABEL name="thinxcloud/mosquitto" version="1.5.7"
 
