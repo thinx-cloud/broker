@@ -1,6 +1,6 @@
 
 #Use debian:buster as a builder and then copy everything.
-FROM debian:buster
+FROM debian:bullseye-20221004
 
 #Set mosquitto and plugin versions.
 #Change them for your needs.
