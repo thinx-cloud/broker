@@ -7,12 +7,12 @@ orbs:
 workflows:
   build-and-publish:
     jobs:
-      - ggshield/scan:
-          name: Scan using Gitguardian shield
-          base_revision: <<pipeline.git.base_revision>>
-          revision: <<pipeline.git.revision>>
-          context:
-            - gitguardian
+      # - ggshield/scan:
+      #     name: Scan using Gitguardian shield
+      #     base_revision: <<pipeline.git.base_revision>>
+      #     revision: <<pipeline.git.revision>>
+      #     context:
+      #       - gitguardian
 
       - docker/publish:
           name: Build and Publish to Docker Hub
