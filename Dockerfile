@@ -12,19 +12,20 @@ ENV GO_VERSION=1.16
 WORKDIR /app
 
 # Get mosquitto build dependencies.
-RUN apt-get update -y && \
+RUN apt-get update -y -qq && \
     apt-get install --no-install-recommends -y \
-    libwebsockets8 \
-    libwebsockets-dev \
-    libc-ares2 \
+    build-essential \
+    ca-certificates=20210119 \
+    git \
     libc-ares-dev \
+    libc-ares2 \
+    libwebsockets-dev \
+    libwebsockets16 \
     openssl \
+    redis \
     uuid \
     uuid-dev \
     wget \
-    build-essential \
-    git \
-    ca-certificates \
     && update-ca-certificates
 
 RUN mkdir -p mosquitto/auth mosquitto/conf.d
@@ -58,7 +59,7 @@ FROM debian:bullseye-20221219
 LABEL name="thinxcloud/mosquitto" version="1.5.7"
 
 # Get mosquitto dependencies.
-RUN apt-get update && apt-get install --no-install-recommends -y libwebsockets8 libc-ares2 openssl uuid redis
+RUN apt-get update && apt-get install --no-install-recommends -y libwebsockets16 libc-ares2 openssl uuid redis
 
 # Setup mosquitto env.
 RUN mkdir -p /var/lib/mosquitto /var/log/mosquitto 
@@ -75,5 +76,8 @@ COPY --from=0 /usr/local/sbin/mosquitto /usr/sbin/mosquitto
 
 # Expose tcp and websocket ports as defined at mosquitto.conf (change accordingly).
 EXPOSE 1883 8883 1884
+
+# TODO: FIXME: Hardening
+# USER mosquitto
 
 ENTRYPOINT ["sh", "-c", "/usr/sbin/mosquitto -c /etc/mosquitto/mosquitto.conf" ]
