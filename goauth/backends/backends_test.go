@@ -1,5 +1,3 @@
-// file deepcode ignore NoHardcodedCredentials/test: this file contains test credentials
-
 package backends
 
 import (
