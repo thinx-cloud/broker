@@ -1,3 +1,5 @@
+LABEL name="thinxcloud/mosquitto" version="2.0.15"
+
 # Define Mosquitto version, see also .github/workflows/build_and_push_docker_images.yml for
 # the automatically built images
 ARG MOSQUITTO_VERSION=2.0.15
