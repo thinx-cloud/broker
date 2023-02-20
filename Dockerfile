@@ -1,5 +1,3 @@
-LABEL name="thinxcloud/mosquitto" version="2.0.15"
-
 # Define Mosquitto version, see also .github/workflows/build_and_push_docker_images.yml for
 # the automatically built images
 ARG MOSQUITTO_VERSION=2.0.15
@@ -14,7 +12,7 @@ ARG LWS_VERSION
 # Get mosquitto build dependencies.
 RUN set -ex; \
     apt-get update; \
-    apt-get install -y wget build-essential cmake libssl-dev libcjson-dev
+    apt-get install -y --no-install-recommends wget build-essential cmake libssl-dev libcjson-dev ca-certificates
 
 # Get libwebsocket. Debian's libwebsockets is too old for Mosquitto version > 2.x so it gets built from source.
 RUN set -ex; \
@@ -89,6 +87,8 @@ COPY --from=mosquitto_builder /usr/local/include/ /usr/local/include/
 
 COPY ./goauth ./
 RUN set -ex; \
+    go get -u ./...; \
+    go mod tidy; \
     go build -buildmode=c-archive go-auth.go; \
     go build -buildmode=c-shared -o go-auth.so; \
 	  go build pw-gen/pw.go
@@ -98,7 +98,7 @@ FROM debian:stable-slim
 
 RUN set -ex; \
     apt update; \
-    apt install -y libc-ares2 openssl uuid tini wget libssl-dev libcjson-dev
+    apt install -y --no-install-recommends libc-ares2 openssl uuid tini wget libssl-dev libcjson-dev
 
 RUN mkdir -p /var/lib/mosquitto /var/log/mosquitto
 RUN set -ex; \
