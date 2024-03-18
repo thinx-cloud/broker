@@ -1,11 +1,15 @@
 version: 2.1
 
 orbs: 
-  docker: circleci/docker@2.0.1
+  docker: circleci/docker@2.0.3
+  ggshield: gitguardian/ggshield@1.1.0
 
 workflows:
-  build-docker-image-only:
+  build-and-publish:
     jobs:
       - docker/publish:
-          image: thinxcloud/broker
-          update-description: true
+          name: Build and Publish to Docker Hub
+          image: thinxcloud/mosquitto
+          tag: latest
+          context:
+            - dockerhub
