@@ -2,10 +2,10 @@
 # the automatically built images
 ARG MOSQUITTO_VERSION=2.0.15
 # Define libwebsocket version
-ARG LWS_VERSION=4.2.2
+ARG LWS_VERSION=4.3.3
 
 # Use debian:stable-slim as a builder for Mosquitto and dependencies.
-FROM debian:stable-slim as mosquitto_builder
+FROM debian:trixie-slim as mosquitto_builder
 ARG MOSQUITTO_VERSION
 ARG LWS_VERSION
 
@@ -71,13 +71,13 @@ RUN set -ex; \
   if [ ! -z "$TARGETPLATFORM" ]; then \
     case "$TARGETPLATFORM" in \
   "linux/arm64") \
-    apt update && apt install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross \
+    apt-get update && apt-get install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross \
     ;; \
   "linux/arm/v7") \
-    apt update && apt install -y gcc-arm-linux-gnueabihf libc6-dev-armhf-cross \
+    apt-get update && apt-get install -y gcc-arm-linux-gnueabihf libc6-dev-armhf-cross \
     ;; \
   "linux/arm/v6") \
-    apt update && apt install -y gcc-arm-linux-gnueabihf libc6-dev-armel-cross libc6-dev-armhf-cross \
+    apt-get update && apt-get install -y gcc-arm-linux-gnueabihf libc6-dev-armel-cross libc6-dev-armhf-cross \
     ;; \
   esac \
   fi
@@ -94,11 +94,11 @@ RUN set -ex; \
 	  go build pw-gen/pw.go
 
 #Start from a new image.
-FROM debian:stable-slim
+FROM debian:trixie-slim
 
 RUN set -ex; \
-    apt update; \
-    apt install -y --no-install-recommends libc-ares2 openssl uuid tini wget libssl-dev libcjson-dev
+    apt-get update; \
+    apt-get install -y --no-install-recommends libc-ares2 openssl uuid tini wget libssl-dev libcjson-dev
 
 RUN mkdir -p /var/lib/mosquitto /var/log/mosquitto
 RUN set -ex; \
