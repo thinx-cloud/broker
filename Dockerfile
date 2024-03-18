@@ -10,9 +10,7 @@ ARG MOSQUITTO_VERSION
 ARG LWS_VERSION
 
 # Get mosquitto build dependencies.
-RUN set -ex; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends wget build-essential cmake libssl-dev libcjson-dev ca-certificates
+RUN apt-get update && apt-get install -y --no-install-recommends wget build-essential cmake libssl-dev libcjson-dev ca-certificates
 
 # Get libwebsocket. Debian's libwebsockets is too old for Mosquitto version > 2.x so it gets built from source.
 RUN set -ex; \
@@ -49,7 +47,7 @@ RUN tar xzvf mosquitto-${MOSQUITTO_VERSION}.tar.gz
 RUN set -ex; \
     cd mosquitto-${MOSQUITTO_VERSION}; \
     make CFLAGS="-Wall -O2 -I/build/lws/include" LDFLAGS="-L/build/lws/lib" WITH_WEBSOCKETS=yes; \
-    make install;
+    make install
 
 # Use golang:latest as a builder for the Mosquitto Go Auth plugin.
 FROM golang:latest AS go_auth_builder
