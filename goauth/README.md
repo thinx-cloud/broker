@@ -1,22 +1,20 @@
 # Mosquitto Go Auth
 
 Mosquitto Go Auth is an authentication and authorization plugin for the Mosquitto MQTT broker.
+The name is terrible, I know, but it's too late to change it. And, you know: naming, cache invalidation, off-by-one errors and whatnot.
 
 # Current state
 
-I don't use Mosquitto or any other MQTT broker and haven't in a very long time, nor do I have a need for them or this plugin. 
-I do maintain it still and will try to keep doing so. This is the list of status, current work and priorities:
-
 - The plugin is up to date and is compatible with the recent [2.0 Mosquitto version](https://mosquitto.org/blog/2020/12/version-2-0-0-released/).
-- Delayed work on disabling superusers is not yet ready.
 - Bug reports will be attended as they appear and will take priority over any work in progress.
 - Reviewing ongoing PRs is my next priority.
-- Feature requests are the lowest priority. Unless they are a super easy win in importance and implementation effort, I'll accept contributions and review 
+- Feature requests are the lowest priority. Unless they are a super easy win in importance and implementation effort, I'll accept contributions and review
   PRs before considering implementing them myself.
 
 ### Intro
 
-This is an authentication and authorization plugin for [mosquitto](https://mosquitto.org/), a well known open source MQTT broker. It's written (almost) entirely in Go: it uses `cgo` to expose mosquitto's auth plugin needed functions, but internally just calls Go to get everything done. 
+This is an authentication and authorization plugin for [mosquitto](https://mosquitto.org/), a well known open source MQTT broker.
+It's written (almost) entirely in Go: it uses `cgo` to expose mosquitto's auth plugin needed functions, but internally just calls Go to get everything done.
 
 It is greatly inspired in [jpmens'](https://github.com/jpmens) [mosquitto-auth-plug](https://github.com/jpmens/mosquitto-auth-plug).
 
@@ -52,6 +50,7 @@ Please open an issue with the `feature` or `enhancement` tag to request new back
 	- [Log level](#log-level)
 	- [Prefixes](#prefixes)
 	- [Backend options](#backend-options)
+    - [Registering checks](#registering-checks)
 - [Files](#files)
 	- [Passwords file](#passwords-file)
 	- [ACL file](#acl-file)
@@ -84,6 +83,8 @@ Please open an issue with the `feature` or `enhancement` tag to request new back
 	- [Testing Javascript](#testing-javascript)
 - [Using with LoRa Server](#using-with-lora-server)
 - [Docker](#docker)
+	- [Prebuilt images](#prebuilt-images)
+	- [Building images](#building-images)
 - [License](#license)
 
 <!-- /MarkdownTOC -->
@@ -107,9 +108,9 @@ First, install dependencies (tested on Debian 9 and later, Linux Mint 18, 19 and
 Download mosquitto and extract it (**change versions accordingly**):
 
 ```
-wget http://mosquitto.org/files/source/mosquitto-1.6.8.tar.gz
-tar xzvf mosquitto-1.6.10.tar.gz
-cd mosquitto-1.6.10
+wget http://mosquitto.org/files/source/mosquitto-2.0.15.tar.gz
+tar xzvf mosquitto-2.0.15.tar.gz
+cd mosquitto-2.0.15
 ```
 
 Modify config.mk, setting websockets support. Then build mosquitto, add a mosquitto user and set ownership for /var/log/mosquitto and /var/lib/mosquitto/ (default log and persistence locations).
@@ -128,7 +129,7 @@ Finally, you may create a service for mosquitto. Create the file /etc/systemd/sy
 
 ```
 [Unit]
-Description=Mosquitto MQTT v3.1/v3.1.1 server
+Description=Mosquitto MQTT v3.1/v5 server
 Wants=network.target
 Documentation=http://mosquitto.org/documentation/
 
@@ -148,25 +149,47 @@ If you are running another distro or need more details on building mosquitto, pl
 
 #### Building the plugin
 
-Only Linux (tested in Debian, Ubuntu and Mint versions) and MacOS are supported. This will build `go-auth.so` shared object:
+Only Linux (tested in Debian, Ubuntu and Mint ùs) and MacOS are supported.
+
+Before attempting to build the plugin, make sure you have go installed on the system.
+The minimum required Go version for the current release is 1.18.
+To check which version (if any) of Go is installed on the system, simply run the following:
+
+```
+go version
+```
+
+If Go is not installed or the installed version is older than 1.18, please update it.
+You can retrieve and install the latest version of Go from the official [Go download website](https://go.dev/dl/) which also have installation instructions.
+
+This will fetch the go dependecies and then build the `go-auth.so` shared object:
 
 ```
 make
 ```
 
-This assumes that `mosquitto.h`, `mosquitto_plugin.h` and `mosquitto_broker.h` are located at `/usr/local/include`, which is true for a manually built `mosquitto` version in debian based systems (and probably others too), or manually built or installed through brew (```brew install mosquitto```) `mosquitto` version in MacOS.
+This assumes that `mosquitto.h`, `mosquitto_plugin.h` and `mosquitto_broker.h` are located at `/usr/include` or `/usr/local/include`
+on MacOS or debian-based systems (and probably other linux systems too).
 
-If this doesn't work for your distribution or OS version, please check `Makefile` `CFLAGS` and `LDFLAGS` and adjust accordingly. 
+On debian-based systems you can install the header files via apt (```apt install mosquitto-dev libmosquitto-dev```). They will be placed under `/usr/include`.
+
+On MacOS you can install the header files via homebrew (```brew install mosquitto```). MacOS on ARM hardware will place the header
+files under `/opt/homebrew/include` and on x86_64 (Intel) hardware under `/usr/local/homebrew/include`. You have to either copy these headers under `/usr/local/include`,
+create a symlink or configure `make` to include homebrew's include path too.
+
+You can also just download the header files at https://github.com/eclipse/mosquitto/tree/master/include (**change versions accordingly**)
+and place them under `/usr/local/include`.
+
+If this doesn't work for your distribution or OS version, please check `Makefile` `CFLAGS` and `LDFLAGS` and adjust accordingly.
 File an issue or open a PR if you wish to contribute correct flags for your system.
-
 
 #### Raspberry Pi
 
-**Important notice:** RPi support has been tested only until versions 1.4.x. 
+**Important notice:** RPi support has been tested only until versions 1.4.x.
 The introduction of new plugin functions in Mosquitto may result in some issue compiling versions 1.5.x and later.
 Please reach me with any solutions you may find when resolving said issues.
 
-To build on a Raspberry Pi (tested with Pi 3 B), you'll need to have Go installed first. 
+To build on a Raspberry Pi (tested with Pi 3 B), you'll need to have Go installed first.
 You can install latest version (**last tested was 1.10.1, change it to suit your needs**) with something like this:
 
 ```
@@ -177,7 +200,7 @@ sudo tar -C /usr/local -xzf go1.10.1.linux-armv6l.tar.gz
 Add Go to your path at .profile:
 
 `
-export PATH=$PATH:/usr/local/go/bin:~/go/bin 
+export PATH=$PATH:/usr/local/go/bin:~/go/bin
 `
 
 Source the file (`source ~/.profile`) and check Go was correctly installed (`go version`).
@@ -210,7 +233,6 @@ make
 make install
 ```
 
-
 ### Configuration
 
 The plugin is configured in [Mosquitto's](https://mosquitto.org/) configuration file (typically `mosquitto.conf`).
@@ -237,13 +259,11 @@ There are 2 types of caches supported: an in memory one using [go-cache](https:/
 Set `cache` option to true to use a cache (defaults to false when missing) and `cache_type` to set the type of the cache. By default the plugin will use `go-cache` unless explicitly told to use Redis.
 Set `cache_reset` to flush the cache on mosquitto startup (**hydrating `go-cache` on startup is not yet supported**).
 
-
 **Update v1.2:**
 Set `cache_refresh` to refresh expiration each time a record is found in the cache (defaults to false).
-Before v1.2 cache was always refreshed upon check. 
+Before v1.2 cache was always refreshed upon check.
 In order to prevent security issues, where an attacker would frequently check on a topic to keep their granted status,
 even when revoked in the underlying backend, this has been turned into an option that defaults to no refreshing.
-
 
 Finally, set expiration times in seconds for authentication (`auth`) and authorization (`acl`) caches:
 
@@ -255,7 +275,14 @@ auth_opt_cache_refresh true
 
 auth_opt_auth_cache_seconds 30
 auth_opt_acl_cache_seconds 30
+auth_opt_auth_jitter_seconds 3
+auth_opt_acl_jitter_seconds 3
 ```
+
+`auth_jitter_seconds` and `acl_jitter_seconds` options allow to randomize cache expiration time by a given offset
+The value used for expiring a cache record would then be `cache_seconds` +/- `jitter_seconds`. With above values (30 seconds for cache and 3 seconds for jitter), effective expiration would yield any value between 27 and 33 seconds.
+Setting a `jitter` value is useful to reduce lookups storms that could occur every `auth/acl_cache_seconds` if lots of clients connected at the same time, e.g. after a server restart when all clients may reconnect immediately creating lots of entries expiring at the same time.
+You may omit or set jitter options to 0 to disable this feature.
 
 If `cache_reset` is set to false or omitted, cache won't be flushed upon service start.
 
@@ -282,6 +309,7 @@ Notice that if `cache_mode` is not provided or isn't equal to `cluster`, cache w
 There are 3 options for password hashing available: `PBKDF2` (default), `Bcrypt` and `Argon2ID`. Every backend that needs one -that's all but `grpc`, `http` and `custom`- gets a hasher and whether it uses specific options or general ones depends on the auth opts passed.
 
 Provided options define what hasher each backend will use:
+
 - If there are general hashing options available but no backend ones, then every backend will use those general ones for its hasher.
 - If there are no options available in general and none for a given backend either, that backend will use defaults (see `hashing/hashing.go` for default values).
 - If there are options for a given backend but no general ones, the backend will use its own hasher and any backend that doesn't register a hasher will use defaults.
@@ -334,7 +362,7 @@ auth_opt_pg_hasher_parallelism            # degree of parallelism (i.e. number o
 
 #### Logging
 
-You can set the log level with the `log_level` option. Valid values are: debug, info, warn, error, fatal and panic. If not set, default value is `info`.
+You can set the log level with the `log_level` option. Valid values are: `debug`, `info`, `warn`, `error`, `fatal` and `panic`. If not set, default value is `info`.
 
 ```
 auth_opt_log_level debug
@@ -349,19 +377,45 @@ auth_opt_log_file /var/log/mosquitto/mosquitto.log
 
 If `log_dest` or `log_file` are invalid, or if there's an error opening the file (e.g. no permissions), logging will default to `stderr`.
 
+**Do not, I repeat, do not set `log_level` to `debug` in production, it may leak sensitive information.**
+**Reason? When debugging it's quite useful to log actual passwords, hashes, etc. to check which backend or hasher is failing to do its job.**
+**This should be used only when debugging locally, I can't stress enough how log level should never, ever be set to `debug` in production.**
+
+**You've been warned.**
+
+#### Retry
+
+By default, if backend had an error (and no other backend granted access), an error is returned to Mosquitto.
+
+It's possible to enable retry, which will immediately retry all configured backends. This could be useful if the
+backend may be behind a load-balancer (like HTTP backend) and one instance may fail:
+
+```
+auth_opt_retry_count 2
+```
+
+The above example will do up to 2 retries (3 calls in total considering the original one) if the responsible backend had an error or was down while performing the check.
+
 #### Prefixes
 
-Though the plugin may have multiple backends enabled, there's a way to specify which backend must be used for a given user: prefixes. When enabled, `prefixes` allow to check if the username contains a predefined prefix in the form prefix_username and use the configured backend for that prefix. Options to enable and set prefixes are the following:
+Though the plugin may have multiple backends enabled, there's a way to specify which backend must be used for a given user: prefixes.
+When enabled, `prefixes` allow to check if the username contains a predefined prefix in the form prefix_username and use the configured backend for that prefix.
+There's also an option to strip the prefix upon checking user or acl,
+so that if a record for `username` exists on a backend with prefix `prefix`,
+then both `username` and `prefix_username` would be authenticated/authorized. Notice that the former would
+need to loop through all the backends since it carries no prefix, while the latter will only be checked by the correct backend.
+
+Options to enable and set prefixes are the following:
 
 ```
 auth_opt_check_prefix true
+auth_opt_strip_prefix true
 auth_opt_prefixes filesprefix, pgprefix, jwtprefix
 ```
 
 Prefixes must meet the declared backends order and number. If amounts don't match, the plugin will default to prefixes disabled.
 
 Underscores (\_) are not allowed in the prefixes, as a username's prefix will be checked against the first underscore's index. Of course, if a username has no underscore or valid prefix, it'll be checked against all backends.
-
 
 #### Superuser checks
 
@@ -410,12 +464,10 @@ If you're using prior versions then `MOSQ_ACL_SUBSCRIBE` is not available and yo
 Any other options with a leading ```auth_opt_``` are handed to the plugin and used by the backends.
 Individual backends have their options described in the sections below.
 
-
 #### Testing
 
 As of now every backend has proper but really ugly tests in place: they expect services running for each backend, and are also pretty outdated and cumbersome to work with in general.
-This issue captures these concerns and a basic plan to refactor tests: https://github.com/iegomez/mosquitto-go-auth/issues/67.
-
+This issue captures these concerns and a basic plan to refactor tests: <https://github.com/iegomez/mosquitto-go-auth/issues/67>.
 
 You may run all tests (see Testing X for each backend's testing requirements) like this:
 
@@ -423,6 +475,21 @@ You may run all tests (see Testing X for each backend's testing requirements) li
 make test
 ```
 
+### Registering checks
+
+Backends may register which checks they'll run, enabling the option to only check user auth through some backends, for example an HTTP one, while delegating ACL checks to another backend, e.g. Files.
+By default, when the option is not present, all checks for that backend will be enabled (unless `superuser` is globally disabled in the case of `superuser` checks).
+For `user` and `acl` checks, at least one backend needs to be registered, either explicitly or by default.
+
+You may register which checks a backend will perform with the option `auth_opt_backend_register` followed by comma separated values of the registered checks, e.g.:
+
+```
+auth_opt_http_register user
+auth_opt_files_register user, acl
+auth_opt_redis_register superuser
+```
+
+Possible values for checks are `user`, `superuser` and `acl`. Any other value will result in an error on plugin initialization.
 
 ### Files
 
@@ -458,8 +525,8 @@ Usage of ./pw:
 For this backend `passwords` and `acls` file paths must be given:
 
 ```
-auth_opt_password_path /path/to/password_file
-auth_opt_acl_path /path/to/acl_file
+auth_opt_files_password_path /path/to/password_file
+auth_opt_files_acl_path /path/to/acl_file
 ```
 
 The following are correctly formatted examples of password and acl files:
@@ -470,7 +537,6 @@ The following are correctly formatted examples of password and acl files:
 test1:PBKDF2$sha512$100000$2WQHK5rjNN+oOT+TZAsWAw==$TDf4Y6J+9BdnjucFQ0ZUWlTwzncTjOOeE00W4Qm8lfPQyPCZACCjgfdK353jdGFwJjAf6vPAYaba9+z4GWK7Gg==
 test2:PBKDF2$sha512$100000$o513B9FfaKTL6xalU+UUwA==$mAUtjVg1aHkDpudOnLKUQs8ddGtKKyu+xi07tftd5umPKQKnJeXf1X7RpoL/Gj/ZRdpuBu5GWZ+NZ2rYyAsi1g==
 ```
-
 
 #### ACL file
 
@@ -492,14 +558,12 @@ pattern read test/%c
 
 The `ACLs` file follows mosquitto's regular syntax: [mosquitto(5)](https://mosquitto.org/man/mosquitto-conf-5.html).
 
-There's no special `superuser` check for this backend since granting a user all permissions on `#` works in the same way. 
+There's no special `superuser` check for this backend since granting a user all permissions on `#` works in the same way.
 Furthermore, if this is **the only backend registered**, then providing no `ACLs` file path will default to grant all permissions for authenticated users when doing `ACL` checks (but then, why use a plugin if you can just use Mosquitto's static file checks, right?): if, instead, no `ACLs` file path is provided but **there are more backends registered**, this backend will default to deny any permissions for any user (again, back to basics).
 
 #### Testing Files
 
 Proper test files are provided in the repo (see test-files dir) and are needed in order to test this backend.
-
-
 
 ### PostgreSQL
 
@@ -507,21 +571,22 @@ The `postgres`  backend allows to specify queries for user, superuser and acl ch
 
 The following `auth_opt_` options are supported:
 
-| Option         		| default           |  Mandatory  | Meaning                  	 								|
-| --------------------- | ----------------- | :---------: | ----------------------------------------------------------- |
-| pg_host           	| 	 localhost      |             | hostname/address			 								|
-| pg_port           	| 		5432        |             | TCP port					 								|
-| pg_user           	|                   |     Y       | username					 								|
-| pg_password       	|                   |     Y       | password					 								|
-| pg_dbname         	|                   |     Y       | database name				 								|
-| pg_userquery      	|                   |     Y       | SQL for users				 								|
-| pg_superquery     	|                   |     N       | SQL for superusers			 								|
-| pg_aclquery       	|                   |     N       | SQL for ACLs				 								|
-| pg_sslmode        	|     disable       |     N       | SSL/TLS mode.				 								|
-| pg_sslcert        	|                   |     N       | SSL/TLS Client Cert.		 								|
-| pg_sslkey         	|                   |     N       | SSL/TLS Client Cert. Key	 								|
-| pg_sslrootcert    	|                   |     N       | SSL/TLS Root Cert			 								|
-| pg_connect_tries    	|        -1         |     N       | x < 0: try forever, x > 0: try x times						|
+| Option           | default     | Mandatory | Meaning                                |
+|------------------|-------------|:---------:|----------------------------------------|
+| pg_host          | localhost   |           | hostname/address                       |
+| pg_port          | 5432        |           | TCP port                               |
+| pg_user          |             |     Y     | username                               |
+| pg_password      |             |     Y     | password                               |
+| pg_dbname        |             |     Y     | database name                          |
+| pg_userquery     |             |     Y     | SQL for users                          |
+| pg_superquery    |             |     N     | SQL for superusers                     |
+| pg_aclquery      |             |     N     | SQL for ACLs                           |
+| pg_sslmode       | verify-full |     N     | SSL/TLS mode.                          |
+| pg_sslcert       |             |     N     | SSL/TLS Client Cert.                   |
+| pg_sslkey        |             |     N     | SSL/TLS Client Cert. Key               |
+| pg_sslrootcert   |             |     N     | SSL/TLS Root Cert                      |
+| pg_connect_tries | -1          |     N     | x < 0: try forever, x > 0: try x times |
+| pg_max_life_time |             |     N     | connection max life time in seconds    |
 
 Depending on the sslmode given, sslcert, sslkey and sslrootcert will be used. Options for sslmode are:
 
@@ -529,6 +594,10 @@ Depending on the sslmode given, sslcert, sslkey and sslrootcert will be used. Op
 	require - Always SSL (skip verification)
 	verify-ca - Always SSL (verify that the certificate presented by the server was signed by a trusted CA)
 	verify-full - Always SSL (verify that the certification presented by the server was signed by a trusted CA and the server host name matches the one in the certificate)
+	
+From *mosquitto go auth* version 2.0.0 on `verify-full` will be the default sslmode instead of `disable`. You may have
+to disable transport layer security if the postgres database server doesn't support encryption and has a certificate
+signed by a trusted CA. 
 
 Queries work pretty much the same as in jpmen's plugin, so here's his discription (with some little changes) about them:
 
@@ -539,11 +608,11 @@ Queries work pretty much the same as in jpmen's plugin, so here's his discriptio
 	username attempting to access the broker.
 
 	SELECT pass FROM account WHERE username = $1 limit 1
-	
+
 
 	The SQL query for checking whether a user is a _superuser_ - and thus
 	circumventing ACL checks - is optional. If it is specified, the query MUST
-	return a single row with a single value: 0 is false and 1 is true. 
+	return a single row with a single value: 0 is false and 1 is true.
 	A single `'$1`' in the query string is replaced by the
 	username attempting to access the broker. The following example uses the
 	same `users` table, but it could just as well reference a distinct table
@@ -563,7 +632,7 @@ Queries work pretty much the same as in jpmen's plugin, so here's his discriptio
 	In the following example, the table has a column `rw` containing 1 for
 	readonly topics, 2 for writeonly topics and 3 for readwrite topics:
 
-	SELECT topic FROM acl WHERE (username = $1) AND rw = $2 
+	SELECT topic FROM acl WHERE (username = $1) AND rw = $2
 
 
 When option pg_superquery is not present, Superuser check will always return false, hence there'll be no superusers.
@@ -586,8 +655,8 @@ auth_opt_pg_aclquery select distinct 'application/' || a.id || '/#' from "user" 
 ```
 
 **DB connect tries**: on startup, depending on `pg_connect_tries` option, the plugin will try to connect and ping the DB a max number of times or forever every 2 seconds.
-By default it will try to reconnect forever to maintain backwards compatibility and avoid issues when `mosquitto` starts before the DB service does, 
-but you may choose to ping a max amount of times by setting any positive number. 
+By default it will try to reconnect forever to maintain backwards compatibility and avoid issues when `mosquitto` starts before the DB service does,
+but you may choose to ping a max amount of times by setting any positive number.
 If given 0, the DB will try to connect only once, which would be the same as setting the option to 1.
 
 #### Password hashing
@@ -621,26 +690,24 @@ topic character varying (200) not null,
 rw int not null);
 ```
 
-
-
 ### Mysql
 
-The `mysql` backend works almost exactly as the `postgres` one, except for a few configurations and that options start with `mysql_` instead of `pg_`. 
-One change has to do with the connection protocol, either a Unix socket or tcp (options are unix or tcp). If `unix` socket is the selected protocol, 
+The `mysql` backend works almost exactly as the `postgres` one, except for a few configurations and that options start with `mysql_` instead of `pg_`.
+One change has to do with the connection protocol, either a Unix socket or tcp (options are unix or tcp). If `unix` socket is the selected protocol,
 then a socket path must be given:
 
 ```
 auth_opt_mysql_protocol unix
 auth_opt_mysql_socket /path/to/socket
-``` 
+```
 
 The default protocol when the option is missing will be `tcp`, even if a socket path is given.
 
-Another change has to do with sslmode options, with options being `true`, `false`, `skip-verify` or `custo`m. 
-When custom mode is given, `sslcert`, `sslkey` and `sslrootcert` paths are expected. 
+Another change has to do with sslmode options, with options being `true`, `false`, `skip-verify` or `custo`m.
+When custom mode is given, `sslcert`, `sslkey` and `sslrootcert` paths are expected.
 If the option is not set or one or more required paths are missing, it will default to false.
 
-Also, default host `localhost` and port `3306` will be used if none are given.  
+Also, default host `localhost` and port `3306` will be used if none are given.
 
 To allow native passwords, set the option to true:
 
@@ -667,6 +734,7 @@ Supported options for `mysql` are:
 | mysql_protocol        	|       tcp         |     N       | Connection protocol											|
 | mysql_socket          	|                   |     N       | Unix socket path											|
 | mysql_connect_tries    	|        -1         |     N       | x < 0: try forever, x > 0: try x times						|
+| mysql_max_life_time       |                   |     N       | connection max life time on seconds                         |
 
 
 Finally, placeholders for mysql differ from those of postgres, changing from $1, $2, etc., to simply ?. These are some **example** queries for `mysql`:
@@ -683,7 +751,6 @@ Superuser query:
 SELECT COUNT(*) FROM account WHERE username = ? AND super = 1
 ```
 
-
 Acl query:
 
 ```sql
@@ -691,8 +758,8 @@ SELECT topic FROM acl WHERE (username = ?) AND rw = ?
 ```
 
 **DB connect tries**: on startup, depending on `mysql_connect_tries` option, the plugin will try to connect and ping the DB a max number of times or forever every 2 seconds.
-By default it will try to reconnect forever to maintain backwards compatibility and avoid issues when `mosquitto` starts before the DB service does, 
-but you may choose to ping a max amount of times by setting any positive number. 
+By default it will try to reconnect forever to maintain backwards compatibility and avoid issues when `mosquitto` starts before the DB service does,
+but you may choose to ping a max amount of times by setting any positive number.
 If given 0, the DB will try to connect only once, which would be the same as setting the option to 1.
 
 #### Password hashing
@@ -748,10 +815,11 @@ The following `auth_opt_` options are supported:
 | sqlite_superquery     	|                   |     N       | SQL for superusers											|
 | sqlite_aclquery       	|                   |     N       | SQL for ACLs												|
 | sqlite_connect_tries	    |        -1         |     N       | x < 0: try forever, x > 0: try x times						|
+| sqlite_max_life_time      |                   |     N       | connection max life time in seconds                         |
 
 SQLite3 allows to connect to an in-memory db, or a single file one, so source maybe `memory` (not :memory:) or the path to a file db.
 
-Example configuration: 
+Example configuration:
 
 ```
 sqlite_source /home/user/db/mosquitto_auth.db
@@ -768,8 +836,8 @@ sqlite_aclquery SELECT topic FROM acl WHERE (username = ?) AND rw >= ?
 ```
 
 **DB connect tries**: on startup, depending on `sqlite_connect_tries` option, the plugin will try to connect and ping the DB a max number of times or forever every 2 seconds.
-By default it will try to reconnect forever to maintain backwards compatibility and avoid issues when `mosquitto` starts before the DB service does, 
-but you may choose to ping a max amount of times by setting any positive number. 
+By default it will try to reconnect forever to maintain backwards compatibility and avoid issues when `mosquitto` starts before the DB service does,
+but you may choose to ping a max amount of times by setting any positive number.
 If given 0, the DB will try to connect only once, which would be the same as setting the option to 1.
 
 #### Password hashing
@@ -780,40 +848,44 @@ For instructions on how to set a backend specific hasher or use the general one,
 
 There are no requirements, as the tests create (and later delete) the DB and tables, or just use a temporary in memory one.
 
-
-
 ### JWT
 
-The `jwt` backend is for auth with a JWT remote API, a local DB or a JavaScript VM interpreter. Global otions for JWT are:
+The `jwt` backend is for auth with a JWT remote API, a local DB, a JavaScript VM interpreter or an ACL file. Global otions for JWT are:
 
-| Option                    | default           |  Mandatory  | Meaning                                     			|
-| ------------------------- | ----------------- | :---------: | -------------------------------------------------------	|
-| jwt_mode                  |                   |      Y      | local, remote, js		                    			|
-| jwt_parse_token           | false             |      N      | Parse token in remote/js modes              			|
-| jwt_secret	            |                   |     Y/N     | JWT secret, required for local mode, optional otherwise	|
-| jwt_userfield		        |                   |      N      | When `Username`, expect `username` as part of claims	|
-| jwt_skip_user_expiration	| false             |      N      | Skip token expiration in user/superuser checks			|
-| jwt_skip_acl_expiration	| false             |      N      | Skip token expiration in ACL checks						|
-
+| Option                   | default   | Mandatory | Meaning                                                 |
+| ------------------------ | --------- | :-------: | ------------------------------------------------------- |
+| jwt_mode                 |           |     Y     | local, remote, js, files                                |
+| jwt_parse_token          | false     |     N     | Parse token in remote/js modes                          |
+| jwt_secret               |           |    Y/N    | JWT secret, required for local mode, optional otherwise |
+| jwt_userfield            |           |     N     | When `Username`, expect `username` as part of claims    |
+| jwt_skip_user_expiration | false     |     N     | Skip token expiration in user/superuser checks          |
+| jwt_skip_acl_expiration  | false     |     N     | Skip token expiration in ACL checks                     |
+| jwt_user_agent           | mosquitto |     N     | User agent for requests                                 |
 
 #### Remote mode
 
 The following `auth_opt_` options are supported by the `jwt` backend when remote is set to true:
 
-| Option                    | default           |  Mandatory  | Meaning                                     |
-| ------------------------- | ----------------- | :---------: | ------------------------------------------- |
-| jwt_host                  |                   |      Y      | API server host name or ip                  |
-| jwt_port                  |                   |      Y      | TCP port number                             |
-| jwt_getuser_uri           |                   |      Y      | URI for check username/password             |
-| jwt_superuser_uri         |                   |      N      | URI for check superuser                     |
-| jwt_aclcheck_uri          |                   |      Y      | URI for check acl                           |
-| jwt_with_tls              | false             |      N      | Use TLS on connect                          |
-| jwt_verify_peer           | false             |      N      | Whether to verify peer for tls              |
-| jwt_response_mode         | status            |      N      | Response type (status, json, text)          |
-| jwt_params_mode           | json              |      N      | Data type (json, form)                      |
+| Option             | default   | Mandatory | Meaning                                                       |
+| ------------------ | --------- | :-------: | ------------------------------------------------------------- |
+| jwt_host           |           |    Y/N    | API server host name or ip                                    |
+| jwt_port           |           |     Y     | TCP port number                                               |
+| jwt_getuser_uri    |           |     Y     | URI for check username/password                               |
+| jwt_superuser_uri  |           |     N     | URI for check superuser                                       |
+| jwt_aclcheck_uri   |           |     Y     | URI for check acl                                             |
+| jwt_with_tls       | false     |     N     | Use TLS on connect                                            |
+| jwt_verify_peer    | false     |     N     | Whether to verify peer for tls                                |
+| jwt_response_mode  | status    |     N     | Response type (status, json, text)                            |
+| jwt_params_mode    | json      |     N     | Data type (json, form)                                        |
+| jwt_user_agent     | mosquitto |     N     | User agent for requests                                       |
+| jwt_http_method    | POST      |     N     | Http method used (POST, GET, PUT)                             |
+| jwt_host_whitelist |           |    Y/N    | List of hosts that are eligible to be an authoritative server |
 
+URIs (like jwt_getuser_uri) are expected to be in the form `/path`. For example, if jwt_with_tls is `false`, jwt_host is `localhost`, jwt_port `3000` and jwt_getuser_uri is `/user`, mosquitto will send a http request to `http://localhost:3000/user` to get a response to check against. How data is sent (either json encoded or as form values) and received (as a simple http status code, a json encoded response or plain text), is given by options jwt_response_mode and jwt_params_mode.
 
-URIs (like jwt_getuser_uri) are expected to be in the form `/path`. For example, if jwt_with_tls is `false`, jwt_host is `localhost`, jwt_port `3000` and jwt_getuser_uri is `/user`, mosquitto will send a POST request to `http://localhost:3000/user` to get a response to check against. How data is sent (either json encoded or as form values) and received (as a simple http status code, a json encoded response or plain text), is given by options jwt_response_mode and jwt_params_mode.  
+if the option `jwt_parse_token` is set to `true`, `jwt_host` can be omitted and the host will be taken from the `Issuer` (`iss` field) claim of the JWT token. In this case the option `jwt_host_whitelist` is mandatory and must contain
+either a comma-separated list of the valid hostnames/ip addresses (with or without `:<port>` part) or the `*` (asterisk) symbol. If the `Issuer` claim is not contained in this list of valid hosts, the authorization will fail. Special
+value `*` means "any host" and is intended for testing/development purposes only - NEVER use this in production!
 
 If the option `jwt_superuser_uri` is not set then `superuser` checks are disabled for this mode.
 
@@ -821,15 +893,15 @@ For all URIs, the backend will send a request with the `Authorization` header se
 
 When `jwt_parse_token` is set, the backend will parse the token using `jwt_secret` and extract the username from either the claim's `Subject` (`sub` field), or from the `username` field when `jwt_userfield` is set to `Username`. This `username` will be sent along other params in all requests, and the `Authorization` header will be set to `Bearer token` as usual.
 
-Notice that failing to provide `jwt_secret` or passing a wrong one will result in an error when parsing the token and the request will not be made. 
+Notice that failing to provide `jwt_secret` or passing a wrong one will result in an error when parsing the token and the request will not be made.
 Set these options only if you intend to keep the plugin synced with your JWT service and wish for the former to pre-parse the token.
 
 ##### Response mode
 
 When response mode is set to `json`, the backend expects the URIs to return a status code (if not 2XX, unauthorized) and a json response, consisting of two fields:
 
-Ok: 		bool
-Error:	string
+- Ok: bool
+- Error: string
 
 If either the status is different from 2XX or `Ok` is false, auth will fail (not authenticated/authorized). In the latter case, an `Error` message stating why it failed will be included.
 
@@ -837,20 +909,21 @@ When response mode is set to `status`, the backend expects the URIs to return a 
 
 When response mode is set to `text`, the backend expects the URIs to return a status code (if not 2XX, unauthorized) and a plain text response of simple "ok" when authenticated/authorized, and any other message (possibly an error message explaining failure to authenticate/authorize) when not.
 
-
 ##### Params mode
 
 When params mode is set to `json`, the backend will send a json encoded string with the relevant data. For example, for acl check, this will get sent:
 
+```json
 {
-	"topic": "mock/topic",
-	"clientid": "mock_client",
-	"acc": 1 		//1 is read, 2 is write, 3 is readwrite, 4 is subscribe
+ "topic":    "mock/topic",
+ "clientid": "mock_client",
+ "acc": 1   // 1 is read, 2 is write, 3 is readwrite, 4 is subscribe
 }
+```
 
 When set to `form`, it will send params like a regular html form post, so acc will be a string instead of an int.
 
-*Important*: Please note that when using JWT, username and password are not needed, so for user and superuser check the backend will send an empty string or empty form values. On the other hand, all three cases will set the "authorization" header with the jwt token, which mosquitto will pass to the plugin as the regular "username" param.  
+*Important*: Please note that when using JWT, username and password are not needed, so for user and superuser check the backend will send an empty string or empty form values. On the other hand, all three cases will set the "authorization" header with the jwt token, which mosquitto will pass to the plugin as the regular "username" param.
 
 *Update: The username is expected to be set at the Subject field of the JWT claims (it was expected at Username earlier).*
 
@@ -895,7 +968,7 @@ initMqttClient(applicationID, mode, devEUI) {
         let topic = 'application/' + applicationID + '/device/' + devEUI + '/data';
         console.log("Subscribing to topic " + topic);
         mqttClient.subscribe(topic, {qos: 0});
-  
+
       },
       onFailure: function (message) {
         console.log("Connection failed: " + message.errorMessage);
@@ -907,10 +980,9 @@ initMqttClient(applicationID, mode, devEUI) {
   }
 ```
 
-
 #### Local mode
 
-When set to `local` mode, the backend will try to validate JWT tokens against a DB backend, either `postgres` or `mysql`, given by the `jwt_db option`. 
+When set to `local` mode, the backend will try to validate JWT tokens against a DB backend, either `postgres` or `mysql`, given by the `jwt_db option`.
 Options for the DB connection are the almost the same as the ones given in the Postgres and Mysql backends but prefixed with `jwt_`, e.g.:
 
 ```
@@ -937,7 +1009,7 @@ Notice that general `jwt_secret` is mandatory when using this mode.
 `jwt_userfield` is still optional and serves as a mean to extract the username from either the claim's `Subject` (`sub` field),
  or from the `username` field when `jwt_userfield` is set to `Username`
 
-As mentioned, only the `userquery` must not be prefixed by the underlying DB, and now expects an integer result instead of a password hash, as the JWT token needs no password checking. 
+As mentioned, only the `userquery` must not be prefixed by the underlying DB, and now expects an integer result instead of a password hash, as the JWT token needs no password checking.
 An example of a different query using either DB is given for the user query.
 
 For postgres:
@@ -954,7 +1026,7 @@ auth_opt_jwt_userquery select count(*) from "user" where username = ? and is_act
 
 *Important note:*
 
-Since local JWT follows the underlying DB backend's way of working, both of these hold true: 
+Since local JWT follows the underlying DB backend's way of working, both of these hold true:
 
 - When option jwt_superquery is not present, Superuser check will always return false, hence there'll be no superusers.
 - When option jwt_aclquery is not present, AclCheck will always return true, hence all authenticated users will be authorized to pub/sub to any topic.
@@ -962,7 +1034,7 @@ Since local JWT follows the underlying DB backend's way of working, both of thes
 
 #### JS mode
 
-The last mode for this backend is JS mode, which allows to run a JavaScript interpreter VM to conduct checks. Options for this mode are:
+When set to `js` JWT will act in JS mode, which allows to run a JavaScript interpreter VM to conduct checks. Options for this mode are:
 
 | Option           				| default         |  Mandatory  | Meaning					  							|
 | ------------------------------| --------------- | :---------: | ----------------------------------------------------- |
@@ -972,11 +1044,11 @@ The last mode for this backend is JS mode, which allows to run a JavaScript inte
 | jwt_js_superuser_script_path	|				  |		Y		| Relative or absolute path to superuser check script	|
 | jwt_js_acl_script_path 		|				  |		Y		| Relative or absolute path to ACL check script			|
 
-This mode expects the user to define JS scripts that return a boolean result to the check in question. 
+This mode expects the user to define JS scripts that return a boolean result to the check in question.
 
 The backend will pass `mosquitto` provided arguments along, that is `token` for both `user` and `superuser` check; `token`, `topic`, `clientid` and `acc` for `ACL` checks.
 
-Optionally, `username` will be passed as an argument when `auth_opt_jwt_parse_token` option is set. As with remote mode, this will need `auth_opt_jwt_secret` to be set and correct, 
+Optionally, `username` will be passed as an argument when `auth_opt_jwt_parse_token` option is set. As with remote mode, this will need `auth_opt_jwt_secret` to be set and correct,
 and `auth_opt_jwt_userfield` to be optionally set.
 
 This is a valid, albeit pretty useless, example script for ACL checks (see `test-files/jwt` dir for test scripts):
@@ -1009,6 +1081,27 @@ With `auth_opt_jwt_parse_token` the signature would be `function checkAcl(token,
 
 Finally, this mode uses [otto](https://github.com/robertkrimen/otto) under the hood to run the scripts. Please check their documentation for supported features and known limitations.
 
+#### Files mode
+
+When set to `files` JWT will run in Files mode, which allows to check user ACLs from a given file.
+These ACLs follow the exact same syntax and semantics as those from the [Files](#files) backend.
+
+Options for this mode are:
+
+| Option           				| default         |  Mandatory  | Meaning			    |
+| ------------------------------| --------------- | :---------: | --------------------- |
+| jwt_files_acl_path  	    	|                 |     Y       | Path to ACL files 	|
+
+
+Notice there's no `passwords` file option since usernames come from parsing the JWT token and no password check is required.
+Thus, you should be careful about general ACL rules and prefer to explicitly set rules for each valid user.
+
+If this shows to be a pain, I'm open to add a file that sets valid `users`,
+i.e. like the `passwords` file for regular `Files` backend but without actual passwords.
+
+If you run into the case where you want to grant some general access but only to valid registered users,
+and find that duplicating rules for each of them in ACLs file is really a pain, please open an issue for discussion.
+
 #### Password hashing
 
 Since JWT needs not to check passwords, there's no need to configure a `hasher`.
@@ -1021,35 +1114,33 @@ If `prefixes` are enabled the client should prefix their JWT tokens with the `pr
 
 This backend expects the same test DBs from the Postgres and Mysql test suites.
 
-
-
 ### HTTP
 
 The `http` backend is very similar to the JWT one, but instead of a jwt token it uses simple username/password to check for user auth, and username for superuser and acls.
 
 The following `auth_opt_` options are supported:
 
-
-| Option             | default           |  Mandatory  | Meaning     |
-| ------------------ | ----------------- | :---------: | ----------  |
-| http_host          |                   |      Y      | IP address,will skip dns lookup   |
-| http_port          |                   |      Y      | TCP port number                   |
-| http_getuser_uri   |                   |      Y      | URI for check username/password   |
-| http_superuser_uri |                   |      N      | URI for check superuser           |
-| http_aclcheck_uri  |                   |      Y      | URI for check acl                 |
-| http_with_tls      | false             |      N      | Use TLS on connect                |
-| http_verify_peer   | false             |      N      | Whether to verify peer for tls    |
-| http_response_mode | status            |      N      | Response type (status, json, text)|
-| http_params_mode   | json              |      N      | Data type (json, form)            |
-| http_timeout       | 5                 |      N      | Timeout in seconds                |
-
+| Option             | default   | Mandatory | Meaning                            |
+| ------------------ | --------- | :-------: | ---------------------------------- |
+| http_host          |           |     Y     | IP address,will skip dns lookup    |
+| http_port          |           |     Y     | TCP port number                    |
+| http_getuser_uri   |           |     Y     | URI for check username/password    |
+| http_superuser_uri |           |     N     | URI for check superuser            |
+| http_aclcheck_uri  |           |     Y     | URI for check acl                  |
+| http_with_tls      | false     |     N     | Use TLS on connect                 |
+| http_verify_peer   | false     |     N     | Whether to verify peer for tls     |
+| http_response_mode | status    |     N     | Response type (status, json, text) |
+| http_params_mode   | json      |     N     | Data type (json, form)             |
+| http_timeout       | 5         |     N     | Timeout in seconds                 |
+| http_user_agent    | mosquitto |     N     | User Agent to use in requests      |
+| http_method        | POST      |     N     | Http method used (POST, GET, PUT)  |
 
 #### Response mode
 
 When response mode is set to `json`, the backend expects the URIs to return a status code (if not 2XX, unauthorized) and a json response, consisting of two fields:
 
-Ok: 		bool
-Error:	string
+- Ok: bool
+- Error: string
 
 If either the status is different from 2XX or `Ok` is false, auth will fail (not authenticated/authorized). In the latter case, an `Error` message stating why it failed will be included.
 
@@ -1057,25 +1148,23 @@ When response mode is set to `status`, the backend expects the URIs to return a 
 
 When response mode is set to `text`, the backend expects the URIs to return a status code (if not 2XX, unauthorized) and a plain text response of simple "ok" when authenticated/authorized, and any other message (possibly an error message explaining failure to authenticate/authorize) when not.
 
-
 #### Params mode
 
 When params mode is set to `json`, the backend will send a json encoded string with the relevant data. For example, for user authentication, this will get sent:
 
+```json
 {
-	"username": "user",
-	"password": "pass",
-	"clientid": "clientid"
+ "username": "user",
+ "password": "pass",
+ "clientid": "clientid"
 }
+```
 
 When set to `form`, it will send params like a regular html form post.
-
 
 #### Testing HTTP
 
 This backend has no special requirements as the http servers are specially mocked to test different scenarios.
-
-
 
 ### Redis
 
@@ -1116,7 +1205,7 @@ For instructions on how to set a backend specific hasher or use the general one,
 
 #### Testing Redis
 
-In order to test the Redis backend, the plugin needs to be able to connect to a redis server located at localhost, on port 6379, without using password and that a database named 2  exists (to avoid messing with the commonly used 0 and 1). 
+In order to test the Redis backend, the plugin needs to be able to connect to a redis server located at localhost, on port 6379, without using password and that a database named 2  exists (to avoid messing with the commonly used 0 and 1).
 
 All these requirements are met with a fresh installation of Redis without any custom configurations (at least when building or installing from the distro's repos in Debian based systems, and probably in other distros too).
 
@@ -1138,25 +1227,25 @@ To test a Redis Cluster the plugin expects that there's a cluster with 3 masters
 The `mongo` backend, as the `redis` one, defines some formats to checks user, superuser and acls.
 Two collections are defined, one for users and the other for common acls.
 
-In the first case, a user consists of a "username" string, a "password" string (as always, PBKDF2 hash), a "superuser" boolean, and an "acls" array of rules. 
+In the first case, a user consists of a "username" string, a "password" string (as always, PBKDF2 hash), a "superuser" boolean, and an "acls" array of rules.
 These rules consis of a "topic" string and an int "acc", where 1 means read only, 2 means write only, 3 means readwrite and 4 means subscribe (see ACL access values section for more details).
 
-Example user: 
+Example user:
 
 ```json
-	{ "_id" : ObjectId("5a4e760f708ba1a1601fa40f"), 
-		"username" : "test", 
-		"password" : "PBKDF2$sha512$100000$os24lcPr9cJt2QDVWssblQ==$BK1BQ2wbwU1zNxv3Ml3wLuu5//hPop3/LvaPYjjCwdBvnpwusnukJPpcXQzyyjOlZdieXTx6sXAcX4WnZRZZnw==", 
-		"superuser" : true, 
-		"acls" : [ 
-			{ "topic" : "test/topic/1", "acc" : 1 },
-            { "topic" : "test/topic/1", "acc" : 4 }, 
-			{ "topic" : "single/topic/+", "acc" : 1}, 
-			{ "topic" : "hierarchy/#", "acc" : 1 }, 
-			{ "topic" : "write/test", "acc" : 2 }, 
-			{ "topic" : "test/readwrite/1", "acc" : 3 } 
-		] 
-	}
+ { "_id" : ObjectId("5a4e760f708ba1a1601fa40f"),
+  "username" : "test",
+  "password" : "PBKDF2$sha512$100000$os24lcPr9cJt2QDVWssblQ==$BK1BQ2wbwU1zNxv3Ml3wLuu5//hPop3/LvaPYjjCwdBvnpwusnukJPpcXQzyyjOlZdieXTx6sXAcX4WnZRZZnw==",
+  "superuser" : true,
+  "acls" : [
+   { "topic" : "test/topic/1", "acc" : 1 },
+            { "topic" : "test/topic/1", "acc" : 4 },
+   { "topic" : "single/topic/+", "acc" : 1},
+   { "topic" : "hierarchy/#", "acc" : 1 },
+   { "topic" : "write/test", "acc" : 2 },
+   { "topic" : "test/readwrite/1", "acc" : 3 }
+  ]
+ }
 ```
 
 Common acls are just like user ones, but live in their own collection and are applicable to any user. Pattern matching against username or clientid acls should be included here.
@@ -1164,8 +1253,8 @@ Common acls are just like user ones, but live in their own collection and are ap
 Example acls:
 
 ```json
-	{ "_id" : ObjectId("5a4e760f708ba1a1601fa411"), "topic" : "pattern/%u", "acc" : 1 }
-	{ "_id" : ObjectId("5a4e760f708ba1a1601fa413"), "topic" : "pattern/%c", "acc" : 1 }
+ { "_id" : ObjectId("5a4e760f708ba1a1601fa411"), "topic" : "pattern/%u", "acc" : 1 }
+ { "_id" : ObjectId("5a4e760f708ba1a1601fa413"), "topic" : "pattern/%c", "acc" : 1 }
 ```
 
 Options for `mongo` are not mandatory and are the following:
@@ -1179,6 +1268,8 @@ auth_opt_mongo_password pwd
 auth_opt_mongo_users users_collection_name
 auth_opt_mongo_acls acls_collection_name
 auth_opt_mongo_disable_superuser true
+auth_opt_mongo_with_tls true
+auth_opt_mongo_insecure_skip_verify false
 ```
 
 The last two set names for the collections to be used for the given database.
@@ -1192,6 +1283,8 @@ When not set, these options default to:
 	dbame:           "mosquitto"
 	users: 			 "users"
 	acls:  			 "acls"
+    with_tls:        "false"
+    insecure_skip_verify: "false"
 
 If you experience any problem connecting to a replica set, please refer to [this issue](https://github.com/iegomez/mosquitto-go-auth/issues/32).
 
@@ -1201,7 +1294,7 @@ For instructions on how to set a backend specific hasher or use the general one,
 
 #### Testing MongoDB
 
-Much like `redis`, to test this backend the plugin needs to be able to connect to a mongodb server located at localhost, on port 27017, without using username or password. 
+Much like `redis`, to test this backend the plugin needs to be able to connect to a mongodb server located at localhost, on port 27017, without using username or password.
 
 All this requirements are met with a fresh installation of MongoDB without any custom configurations (at least when building or installing from the distro's repos in Debian based systems, and probably in other distros too).
 
@@ -1216,8 +1309,8 @@ If you wish to test Mongo's auth, you'll need to run mongo with the `--auth` fla
 
 ### Custom
 
-Using the `plugin` package from Go, this project allows to write your own custom backend, 
-compile it as a shared object and link to it from mosquitto-go-auth. 
+Using the `plugin` package from Go, this project allows to write your own custom backend,
+compile it as a shared object and link to it from mosquitto-go-auth.
 Check Go pluing [docs](https://golang.org/pkg/plugin/) for more details.
 
 In order to create your own plugin, you need to declare a main package that exposes the following functions (and uses the logrus package for logging):
@@ -1234,16 +1327,16 @@ func Init(authOpts map[string]string, logLevel log.Level) error {
 	return nil
 }
 
-func GetUser(username, password, clientid string) bool {
-	return false
+func GetUser(username, password, clientid string) (bool, error) {
+	return false, nil
 }
 
-func GetSuperuser(username string) bool {
-	return false
+func GetSuperuser(username string) (bool, error) {
+	return false, nil
 }
 
-func CheckAcl(username, topic, clientid string, acc int) bool {
-	return false
+func CheckAcl(username, topic, clientid string, acc int) (bool, error) {
+	return false, nil
 }
 
 func GetName() string {
@@ -1287,9 +1380,16 @@ The following `auth_opt_` options are supported:
 | grpc_host                 |                   |      Y      | gRPC server hostname   		   |
 | grpc_port                 |                   |      Y      | gRPC server port number        |
 | grpc_ca_cert   	        |                   |      N      | gRPC server CA cert path	   |
-| grpc_tls_cert 	        |                   |      N      | gRPC server TLS cert path      |
-| grpc_tls_key  	        |                   |      N      | gRPC server TLS key path       |
+| grpc_tls_cert 	        |                   |      N      | gRPC client TLS cert path      |
+| grpc_tls_key  	        |                   |      N      | gRPC client TLS key path       |
 | grpc_disable_superuser    |       false       |      N      | disable superuser checks       |
+| grpc_fail_on_dial_error   |       false       |      N      | fail to init on dial error     |
+| grpc_dial_timeout_ms      |       500         |      N      | dial timeout in ms             |
+
+The last one, `grpc_fail_on_dial_error` indicates if failing to dial the service on initialization should be
+treated as a fatal error, or it should only be logged and then an attempt to redial should be made on every
+user or ACL check until the connection may be established. Then the backend will assume it has a healthy client
+and let the underlying package manage automatic reconnections.
 
 #### Service
 
@@ -1320,7 +1420,7 @@ service AuthService {
 
     // Halt signals the backend to halt.
     rpc Halt(google.protobuf.Empty) returns (google.protobuf.Empty) {}
-    
+
 }
 
 message GetUserRequest {
@@ -1374,13 +1474,16 @@ The `javascript` backend allows to run a JavaScript interpreter VM to conduct ch
 | js_user_script_path 		|				  |		Y		| Relative or absolute path to user check script		|
 | js_superuser_script_path	|				  |		Y		| Relative or absolute path to superuser check script	|
 | js_acl_script_path 		|				  |		Y		| Relative or absolute path to ACL check script			|
+| js_pass_claims	  	|    	false     |     N       | Pass all claims extracted from the token to check scripts		|
 
-This backend expects the user to define JS scripts that return a boolean result to the check in question. 
+This backend expects the user to define JS scripts that return a boolean result to the check in question.
 
 The backend will pass `mosquitto` provided arguments along, that is:
 - `username`, `password` and `clientid` for `user` checks.
 - `username` for `superuser` checks.
 - `username`, `topic`, `clientid` and `acc` for `ACL` checks.
+If `js_pass_claims` option is set, an additional argument `claims` containing the claims data extracted
+from the JWT token is passed to all checks.
 
 
 This is a valid, albeit pretty useless, example script for ACL checks (see `test-files/jwt` dir for test scripts):
@@ -1413,24 +1516,79 @@ checkAcl(username, topic, clientid, acc);
 
 Notice the `password` will be passed to the script as given by `mosquitto`, leaving any hashing to the script.
 
-
 #### Testing Javascript
 
 This backend has no special requirements as `javascript` test files are provided to test different scenarios.
-
 
 ### Using with LoRa Server
 
 See the official [MQTT authentication & authorization guide](https://www.loraserver.io/guides/mqtt-authentication/) for isntructions on using the plugin with the LoRa Server project.
 
-
 ### Docker
 
-This project provides example Dockerfiles for building a Docker container that contains `mosquitto` and the `mosquitto-go-auth` plug-in.
+#### Support and issues
 
-Please read the [documentation](./docker/README.md) in the [docker](/docker) directory for more information.
+Please be aware that, since Docker isn't actively used by the maintainer of this project, support for issues regarding Docker, the provided images and building Docker images is very limited and usually driven by other contributors.
 
-Images are provided on Dockerhub under [iegomez/mosquitto-go-auth](https://hub.docker.com/r/iegomez/mosquitto-go-auth).
+Only images for x86_64/AMD64 and ARMv7 have been tested. ARMv6 and ARM64 hardware was not available to the contributor creating the build workflow.
+
+#### Prebuilt images
+
+Prebuilt images are provided on Dockerhub under [iegomez/mosquitto-go-auth](https://hub.docker.com/r/iegomez/mosquitto-go-auth).
+To run the latest image, use the following command and replace `/conf` with the location of your `.conf` files:
+`docker run -it -p 1884:1884 -p 1883:1883 -v /conf:/etc/mosquitto iegomez/mosquitto-go-auth`
+
+You should also add the neccesary configuration to your .conf and update the path of the shared object:
+```auth_plugin /mosquitto/go-auth.so```
+
+#### Building images
+
+This project provides a Dockerfile for building a Docker container that contains `mosquitto` and the `mosquitto-go-auth` plug-in.
+
+Building containers is only supported on x86_64/AMD64 machines with multi-arch build support via [Docker Buildx](https://docs.docker.com/buildx/working-with-buildx).
+This allows building containers for x86_64/AMD64, ARMv6, ARMv7 and ARM64 on a single x86_64/AMD64 machine. For further instructions regarding Buildx, please refer to its documentation ond Docker's website.
+
+
+#### Step-by-step guide:
+* clone this repository: `git clone https://github.com/iegomez/mosquitto-go-auth.git`
+* change into the project folder `cd mosquitto-go-auth`
+* build containers for your desired architectures: `docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 .`
+
+#### Base Image
+Since there are several issues with using `alpine` based images we are using `debian:stable-slim` for both our build and final image. The final image size is about 60 MB.
+
+Documented issues:
+- https://github.com/iegomez/mosquitto-go-auth/issues/14
+- https://github.com/iegomez/mosquitto-go-auth/issues/15
+- https://github.com/iegomez/mosquitto-go-auth/issues/20
+
+#### Mosquitto version
+The Dockerfile compiles `mosquitto` using the source code from the version specified by `MOSQUITTO_VERSION`.
+
+>Mosquitto released versions can be found at https://mosquitto.org/files/source/
+
+### Testing using Docker
+
+Since tests require multiple backends (PostgreSQL, Mysql, Redis...), a Dockerfile.test provide
+and image with all required backend.
+To use it:
+```
+docker build -t mosquitto-go-auth.test -f Dockerfile.runtest .
+docker run --rm -ti mosquitto-go-auth.test ./run-test-in-docker.sh
+```
+
+Or using local source (avoid the need to rebuild image):
+```
+docker run -v $(pwd):/app --rm -ti mosquitto-go-auth.test ./run-test-in-docker.sh
+```
+
+You may even specify the command to run after backends are started, which allow
+to run only some tests or even get a shell inside the containers:
+```
+docker run -v $(pwd):/app --rm -ti mosquitto-go-auth.test ./run-test-in-docker.sh make test-backends
+
+docker run -v $(pwd):/app --rm -ti mosquitto-go-auth.test ./run-test-in-docker.sh bash
+```
 
 ### License
 

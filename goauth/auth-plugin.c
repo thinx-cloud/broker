@@ -7,7 +7,6 @@
 #include <mosquitto_plugin.h>
 #include <mosquitto.h>
 
-
 #if MOSQ_AUTH_PLUGIN_VERSION >= 3
 # define mosquitto_auth_opt mosquitto_opt
 #endif

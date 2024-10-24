@@ -1,79 +1,126 @@
+# Define Mosquitto version, see also .github/workflows/build_and_push_docker_images.yml for
+# the automatically built images
+ARG MOSQUITTO_VERSION=2.0.15
+# Define libwebsocket version
+ARG LWS_VERSION=4.3.3
 
-#Use debian:buster as a builder and then copy everything.
-FROM debian:buster
-
-#Set mosquitto and plugin versions.
-#Change them for your needs.
-# Latest is mosquitto-2.0.7 (04-Feb-2021) - build fails with missing cJSON dependency, originally 1.6.10
-ENV MOSQUITTO_VERSION=1.6.10
-ENV PLUGIN_VERSION=0.6.1
-ENV GO_VERSION=1.16
-
-WORKDIR /app
+# Use debian:stable-slim as a builder for Mosquitto and dependencies.
+FROM debian:trixie-slim as mosquitto_builder
+ARG MOSQUITTO_VERSION
+ARG LWS_VERSION
 
 # Get mosquitto build dependencies.
-RUN apt-get update -y && \
-    apt-get install --no-install-recommends -y \
-    libwebsockets8 \
-    libwebsockets-dev \
-    libc-ares2 \
-    libc-ares-dev \
-    openssl \
-    uuid \
-    uuid-dev \
-    wget \
-    build-essential \
-    git \
-    ca-certificates \
-    && update-ca-certificates
+RUN apt-get update && apt-get install -y --no-install-recommends wget build-essential cmake libssl-dev libcjson-dev ca-certificates
+
+# Get libwebsocket. Debian's libwebsockets is too old for Mosquitto version > 2.x so it gets built from source.
+RUN set -ex; \
+    wget https://github.com/warmcat/libwebsockets/archive/v${LWS_VERSION}.tar.gz -O /tmp/lws.tar.gz; \
+    mkdir -p /build/lws; \
+    tar --strip=1 -xf /tmp/lws.tar.gz -C /build/lws; \
+    rm /tmp/lws.tar.gz; \
+    cd /build/lws; \
+    cmake . \
+        -DCMAKE_BUILD_TYPE=MinSizeRel \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DLWS_IPV6=ON \
+        -DLWS_WITHOUT_BUILTIN_GETIFADDRS=ON \
+        -DLWS_WITHOUT_CLIENT=ON \
+        -DLWS_WITHOUT_EXTENSIONS=ON \
+        -DLWS_WITHOUT_TESTAPPS=ON \
+        -DLWS_WITH_HTTP2=OFF \
+        -DLWS_WITH_SHARED=OFF \
+        -DLWS_WITH_ZIP_FOPS=OFF \
+        -DLWS_WITH_ZLIB=OFF \
+        -DLWS_WITH_EXTERNAL_POLL=ON; \
+    make -j "$(nproc)"; \
+    rm -rf /root/.cmake
+
+WORKDIR /app
 
 RUN mkdir -p mosquitto/auth mosquitto/conf.d
 
 RUN wget http://mosquitto.org/files/source/mosquitto-${MOSQUITTO_VERSION}.tar.gz
-RUN tar xzvf mosquitto-${MOSQUITTO_VERSION}.tar.gz && rm mosquitto-${MOSQUITTO_VERSION}.tar.gz 
 
-#Build mosquitto.
-RUN cd mosquitto-${MOSQUITTO_VERSION} && make WITH_WEBSOCKETS=yes && make install && cd ..
+RUN tar xzvf mosquitto-${MOSQUITTO_VERSION}.tar.gz
 
-#Get Go.
-RUN export GO_ARCH=$(uname -m | sed -es/x86_64/amd64/ -es/armv7l/armv6l/ -es/aarch64/arm64/) && \
-    wget --no-check-certificate https://dl.google.com/go/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz && \
-    tar -C /usr/local -xzf go${GO_VERSION}.linux-${GO_ARCH}.tar.gz && \
-    export PATH=$PATH:/usr/local/go/bin && \
-    go version && \
-    rm go${GO_VERSION}.linux-${GO_ARCH}.tar.gz
+# Build mosquitto.
+RUN set -ex; \
+    cd mosquitto-${MOSQUITTO_VERSION}; \
+    make CFLAGS="-Wall -O2 -I/build/lws/include" LDFLAGS="-L/build/lws/lib" WITH_WEBSOCKETS=yes; \
+    make install
 
-# Build the plugin from local source
+# Use golang:latest as a builder for the Mosquitto Go Auth plugin.
+FROM golang:latest AS go_auth_builder
+
+ENV CGO_CFLAGS="-I/usr/local/include -fPIC"
+ENV CGO_LDFLAGS="-shared -Wl,-unresolved-symbols=ignore-all"
+ENV CGO_ENABLED=1
+
+# Bring TARGETPLATFORM to the build scope
+ARG TARGETPLATFORM="linux/amd64"
+ENV BUILDPLATFORM="linux/amd64"
+
+# Install TARGETPLATFORM parser to translate its value to GOOS, GOARCH, and GOARM
+COPY --from=tonistiigi/xx:golang / /
+RUN go env
+
+# Install needed libc and gcc for target platform.
+RUN set -ex; \
+  if [ ! -z "$TARGETPLATFORM" ]; then \
+    case "$TARGETPLATFORM" in \
+  "linux/arm64") \
+    apt-get update && apt-get install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross \
+    ;; \
+  "linux/arm/v7") \
+    apt-get update && apt-get install -y gcc-arm-linux-gnueabihf libc6-dev-armhf-cross \
+    ;; \
+  "linux/arm/v6") \
+    apt-get update && apt-get install -y gcc-arm-linux-gnueabihf libc6-dev-armel-cross libc6-dev-armhf-cross \
+    ;; \
+  esac \
+  fi
+
+WORKDIR /app
+COPY --from=mosquitto_builder /usr/local/include/ /usr/local/include/
+
 COPY ./goauth ./
-
-# Build the plugin.
-RUN export PATH=$PATH:/usr/local/go/bin && \
-    export CGO_CFLAGS="-I/usr/local/include -fPIC" && \
-    export CGO_LDFLAGS="-shared" && \
-    make
+RUN set -ex; \
+    go get -u ./...; \
+    go mod tidy; \
+    go build -buildmode=c-archive go-auth.go; \
+    go build -buildmode=c-shared -o go-auth.so; \
+	  go build pw-gen/pw.go
 
 #Start from a new image.
-FROM debian:buster
+FROM debian:trixie-slim
 
-LABEL name="thinxcloud/mosquitto" version="1.5.7"
+RUN set -ex; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends libc-ares2 openssl uuid tini wget libssl-dev libcjson-dev ca-certificates 
 
-# Get mosquitto dependencies.
-RUN apt-get update && apt-get install --no-install-recommends -y libwebsockets8 libc-ares2 openssl uuid redis
+RUN mkdir -p /var/lib/mosquitto /var/log/mosquitto
+RUN set -ex; \
+    groupadd mosquitto; \
+    useradd -s /sbin/nologin mosquitto -g mosquitto -d /var/lib/mosquitto; \
+    chown -R mosquitto:mosquitto /var/log/mosquitto/; \
+    chown -R mosquitto:mosquitto /var/lib/mosquitto/
 
-# Setup mosquitto env.
-RUN mkdir -p /var/lib/mosquitto /var/log/mosquitto 
-RUN groupadd mosquitto \
-    && useradd -s /sbin/nologin mosquitto -g mosquitto -d /var/lib/mosquitto \
-    && chown -R mosquitto:mosquitto /var/log/mosquitto/ \
-    && chown -R mosquitto:mosquitto /var/lib/mosquitto/
+#Copy confs, plugin so and mosquitto binary.
+COPY --from=mosquitto_builder /app/mosquitto/ /mosquitto/
+COPY --from=go_auth_builder /app/pw /mosquitto/pw
+COPY --from=go_auth_builder /app/go-auth.so /mosquitto/go-auth.so
+COPY --from=mosquitto_builder /usr/local/sbin/mosquitto /usr/sbin/mosquitto
 
-# Copy confs, plugin so and mosquitto binary.
-COPY --from=0 /app/mosquitto/ /mosquitto/
-COPY --from=0 /app/pw /mosquitto/pw
-COPY --from=0 /app/go-auth.so /mosquitto/go-auth.so
-COPY --from=0 /usr/local/sbin/mosquitto /usr/sbin/mosquitto
+COPY --from=mosquitto_builder /usr/local/lib/libmosquitto* /usr/local/lib/
 
-# Expose tcp and websocket ports as defined at mosquitto.conf (change accordingly).
-EXPOSE 1883 8883 1884
+COPY --from=mosquitto_builder /usr/local/bin/mosquitto_passwd /usr/bin/mosquitto_passwd
+COPY --from=mosquitto_builder /usr/local/bin/mosquitto_sub /usr/bin/mosquitto_sub
+COPY --from=mosquitto_builder /usr/local/bin/mosquitto_pub /usr/bin/mosquitto_pub
+COPY --from=mosquitto_builder /usr/local/bin/mosquitto_rr /usr/bin/mosquitto_rr
 
-ENTRYPOINT ["sh", "-c", "/usr/sbin/mosquitto -c /etc/mosquitto/mosquitto.conf" ]
+RUN ldconfig;
+
+EXPOSE 1883 1884
+
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD [ "/usr/sbin/mosquitto" ,"-c", "/etc/mosquitto/mosquitto.conf" ]
