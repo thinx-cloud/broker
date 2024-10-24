@@ -10,7 +10,7 @@ ARG MOSQUITTO_VERSION
 ARG LWS_VERSION
 
 # Get mosquitto build dependencies.
-RUN apt-get update && apt-get install -y --no-install-recommends wget build-essential cmake libssl-dev libcjson-dev ca-certificates
+RUN apt-get update && apt-get install -y --no-install-recommends wget build-essential cmake libssl-dev libcjson-dev ca-certificates gnupg2
 
 # Get libwebsocket. Debian's libwebsockets is too old for Mosquitto version > 2.x so it gets built from source.
 RUN set -ex; \
