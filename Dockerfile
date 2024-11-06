@@ -5,7 +5,7 @@ ARG MOSQUITTO_VERSION=2.0.15
 ARG LWS_VERSION=4.3.3
 
 # Use debian:stable-slim as a builder for Mosquitto and dependencies.
-FROM debian: stable-slim as mosquitto_builder
+FROM debian:stable-slim as mosquitto_builder
 ARG MOSQUITTO_VERSION
 ARG LWS_VERSION
 
@@ -92,7 +92,7 @@ RUN set -ex; \
 	  go build pw-gen/pw.go
 
 #Start from a new image.
-FROM debian: stable-slim
+FROM debian:stable-slim
 
 RUN set -ex; \
     apt-get update; \
