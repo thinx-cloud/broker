@@ -1,6 +1,8 @@
 module github.com/iegomez/mosquitto-go-auth
 
-go 1.18
+go 1.23.0
+
+toolchain go1.24.0
 
 require (
 	github.com/go-redis/redis/v8 v8.11.5
@@ -18,7 +20,7 @@ require (
 	github.com/smartystreets/goconvey v0.0.0-20190330032615-68dc04aab96a
 	github.com/stretchr/testify v1.7.0
 	go.mongodb.org/mongo-driver v1.9.1
-	golang.org/x/crypto v0.21.0
+	golang.org/x/crypto v0.38.0
 	google.golang.org/grpc v1.62.1
 )
 
@@ -39,9 +41,9 @@ require (
 	github.com/xdg-go/stringprep v1.0.3 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a // indirect
 	golang.org/x/net v0.21.0 // indirect
-	golang.org/x/sync v0.6.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/sync v0.14.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/text v0.25.0 // indirect
 	google.golang.org/genproto v0.0.0-20240123012728-ef4313101c80 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240123012728-ef4313101c80 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
