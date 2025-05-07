@@ -108,9 +108,9 @@ First, install dependencies (tested on Debian 9 and later, Linux Mint 18, 19 and
 Download mosquitto and extract it (**change versions accordingly**):
 
 ```
-wget http://mosquitto.org/files/source/mosquitto-2.0.15.tar.gz
-tar xzvf mosquitto-2.0.15.tar.gz
-cd mosquitto-2.0.15
+wget http://mosquitto.org/files/source/mosquitto-2.0.21.tar.gz
+tar xzvf mosquitto-2.0.21.tar.gz
+cd mosquitto-2.0.21
 ```
 
 Modify config.mk, setting websockets support. Then build mosquitto, add a mosquitto user and set ownership for /var/log/mosquitto and /var/lib/mosquitto/ (default log and persistence locations).
