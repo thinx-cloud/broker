@@ -29,15 +29,15 @@ jobs:
 
       - name: Install govulncheck
         run: |
-          cd services/broker/goauth
+          cd goauth
           go install golang.org/x/vuln/cmd/govulncheck@latest
 
       - name: Run unit tests for goauth
         run: |
-          cd services/broker/goauth
+          cd goauth
           go test ./... -v
 
       - name: Run govulncheck for goauth
         run: |
-          cd services/broker/goauth
+          cd goauth
           govulncheck ./...
