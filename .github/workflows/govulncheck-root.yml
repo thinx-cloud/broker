@@ -1,0 +1,43 @@
+name: govulncheck-root
+
+on:
+  push:
+  schedule:
+    - cron: '0 3 * * *'
+
+jobs:
+  govulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.25'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/.pkg/mod
+          key: ${{ runner.os }}-go-1.25-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-1.25-
+
+      - name: Install govulncheck
+        run: |
+          cd services/broker/goauth
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run unit tests for goauth
+        run: |
+          cd services/broker/goauth
+          go test ./... -v
+
+      - name: Run govulncheck for goauth
+        run: |
+          cd services/broker/goauth
+          govulncheck ./...

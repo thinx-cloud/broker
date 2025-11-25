@@ -50,7 +50,7 @@ RUN set -ex; \
     make install
 
 # Use golang:latest as a builder for the Mosquitto Go Auth plugin.
-FROM golang:latest AS go_auth_builder
+FROM golang:1.25.4 AS go_auth_builder
 
 ENV CGO_CFLAGS="-I/usr/local/include -fPIC"
 ENV CGO_LDFLAGS="-shared -Wl,-unresolved-symbols=ignore-all"

@@ -1,0 +1,50 @@
+name: govulncheck
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:                      # Run on push (all branches)
+  schedule:                  # Run nightly
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  govulncheck:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [1.25]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/.pkg/mod
+          key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ matrix.go-version }}-
+
+      - name: Install govulncheck
+        run: |
+          cd services/broker/goauth
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run unit tests
+        run: |
+          cd services/broker/goauth
+          go test ./... -v
+
+      - name: Run govulncheck
+        run: |
+          cd services/broker/goauth
+          govulncheck ./...

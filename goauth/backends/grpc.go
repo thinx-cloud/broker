@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/empty"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	gs "github.com/iegomez/mosquitto-go-auth/grpc"
 	"github.com/pkg/errors"
@@ -139,7 +139,7 @@ func (o *GRPC) CheckAcl(username, topic, clientid string, acc int32) (bool, erro
 
 // GetName gets the gRPC backend's name.
 func (o *GRPC) GetName() string {
-	resp, err := o.client.GetName(context.Background(), &empty.Empty{})
+	resp, err := o.client.GetName(context.Background(), &emptypb.Empty{})
 	if err != nil {
 		return "grpc get name error"
 	}
@@ -148,7 +148,7 @@ func (o *GRPC) GetName() string {
 
 // Halt signals the gRPC backend that mosquitto is halting.
 func (o *GRPC) Halt() {
-	_, err := o.client.Halt(context.Background(), &empty.Empty{})
+	_, err := o.client.Halt(context.Background(), &emptypb.Empty{})
 	if err != nil {
 		log.Errorf("grpc halt: %s", err)
 	}

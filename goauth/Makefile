@@ -31,7 +31,13 @@ test-hashing:
 
 service:
 	@echo "Generating gRPC code from .proto files"
-	@go generate grpc/grpc.go
+	@./grpc/gen.sh
+
+.PHONY: gen-proto
+gen-proto:
+	@echo "Regenerating protobuf Go code (protoc + protoc-gen-go + protoc-gen-go-grpc)"
+	@./grpc/gen.sh
+
 
 clean:
 	rm -f go-auth.h
