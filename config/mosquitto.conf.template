@@ -1,4 +1,9 @@
-# config/mosquitto.conf.dist
+# config/mosquitto.conf.template
+#
+# Canonical broker config. This file is baked into the image and rendered to
+# /etc/mosquitto/mosquitto.conf at container start by entrypoint.sh, which
+# substitutes ${REDIS_PASSWORD} from the environment (Docker/orchestrator secret).
+# Do NOT hardcode secrets here — keep them as ${VAR} placeholders.
 
 #
 # General Mosquitto Settings
@@ -9,7 +14,7 @@ user mosquitto
 persistence true
 persistence_location /mqtt/data/
 
-log_type all  
+log_type all
 log_timestamp true
 log_timestamp_format %Y-%m-%dT%H:%M:%S
 
@@ -60,13 +65,10 @@ auth_opt_cache_db 4
 
 auth_opt_redis_host thinx-redis
 auth_opt_redis_port 6379
-auth_opt_redis_db 2
+auth_opt_redis_db 0
 
-# The image renders config/mosquitto.conf.template via entrypoint.sh, injecting
-# ${REDIS_PASSWORD} from a secret at container start. This standalone file is a
-# reference only; the sentinel below is intentionally invalid so that deploying
-# this file unrendered fails loudly instead of authenticating with a known value.
-auth_opt_redis_password __SET_VIA_SECRET__
+# Injected at container start from the REDIS_PASSWORD secret by entrypoint.sh.
+auth_opt_redis_password ${REDIS_PASSWORD}
 
 auth_opt_redis_disable_superuser true
 

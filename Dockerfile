@@ -96,7 +96,7 @@ FROM debian:stable-slim
 
 RUN set -ex; \
     apt-get update; \
-    apt-get install -y --no-install-recommends libc-ares2 openssl uuid tini wget libssl-dev libcjson-dev ca-certificates 
+    apt-get install -y --no-install-recommends libc-ares2 openssl uuid tini wget libssl-dev libcjson-dev ca-certificates gettext-base
 
 RUN mkdir -p /var/lib/mosquitto /var/log/mosquitto
 RUN set -ex; \
@@ -120,7 +120,12 @@ COPY --from=mosquitto_builder /usr/local/bin/mosquitto_rr /usr/bin/mosquitto_rr
 
 RUN ldconfig;
 
-EXPOSE 1883 1884
+# Config is rendered at runtime from a template so no secret is baked into the image.
+# entrypoint.sh substitutes ${REDIS_PASSWORD} into mosquitto.conf.template before start.
+COPY ./config/mosquitto.conf.template /etc/mosquitto/mosquitto.conf.template
+COPY ./entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
-ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD [ "/usr/sbin/mosquitto" ,"-c", "/etc/mosquitto/mosquitto.conf" ]
+EXPOSE 1883 1884 8883
+
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/entrypoint.sh"]

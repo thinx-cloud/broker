@@ -6,7 +6,10 @@ LABEL name="thinxcloud/mosquitto" version="2.0.21"
 RUN apt install -y ca-certificates mosquitto-clients
 
 # mock directory structure for mosquitto data
-COPY ./test/mosquitto/mosquitto.conf /etc/mosquitto/mosquitto.conf
+# The test config is a template; the inherited entrypoint renders it at start,
+# substituting REDIS_PASSWORD below (a throwaway test value, not a real secret).
+COPY ./test/mosquitto/mosquitto.conf /etc/mosquitto/mosquitto.conf.template
+ENV REDIS_PASSWORD=test-only-not-a-secret
 
 # this must happen in the run-script!!! othervise env-var can not be externalized; happens only in test of files backend
 #RUN mkdir -p /mqtt/auth && \
