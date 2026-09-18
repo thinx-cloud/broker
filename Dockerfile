@@ -4,8 +4,10 @@ ARG MOSQUITTO_VERSION=2.0.21
 # Define libwebsocket version
 ARG LWS_VERSION=4.3.3
 
-# Use debian:stable-slim as a builder for Mosquitto and dependencies.
-FROM debian:stable-slim as mosquitto_builder
+# Docker Hardened Image base (CIS-compliant, DHI-maintained Debian 13 "trixie").
+# Build stages take the `-dev` variant: it runs as root and ships apt plus a
+# toolchain, neither of which the bare `:trixie` runtime variant has.
+FROM dhi.io/debian-base:trixie-dev AS mosquitto_builder
 ARG MOSQUITTO_VERSION
 ARG LWS_VERSION
 
@@ -91,19 +93,45 @@ RUN set -ex; \
     go build -buildmode=c-shared -o go-auth.so; \
 	  go build pw-gen/pw.go
 
-#Start from a new image.
-FROM debian:stable-slim
-
+# Stage the handful of runtime packages the hardened runtime image does not
+# ship. `:trixie` has no package manager, so they are downloaded here and
+# unpacked into a rootfs that the final stage copies in wholesale. `--reinstall`
+# is needed because some of these are already present in the -dev variant and
+# apt would otherwise skip the download. Everything lands in /usr/bin and
+# /usr/lib/<triplet>, both of which ld.so searches by default -- `:trixie` has
+# neither ldconfig nor an ld.so.cache.
+FROM dhi.io/debian-base:trixie-dev AS runtime_deps
 RUN set -ex; \
     apt-get update; \
-    apt-get install -y --no-install-recommends libc-ares2 openssl uuid tini wget libssl-dev libcjson-dev ca-certificates gettext-base
+    apt-get install -y --no-install-recommends --reinstall --download-only \
+        libc-ares2 libcjson1 libuuid1 tini gettext-base; \
+    mkdir -p /rootfs; \
+    for deb in /var/cache/apt/archives/*.deb; do dpkg-deb -x "$deb" /rootfs; done; \
+    rm -rf /rootfs/usr/share/doc /rootfs/usr/share/man /rootfs/usr/share/locale /rootfs/usr/share/lintian
 
-RUN mkdir -p /var/lib/mosquitto /var/log/mosquitto
+#Start from a new image: the hardened runtime variant, which carries no package
+# manager, no compiler and no shell utilities beyond a minimal userland.
+# openssl and ca-certificates are already part of it; libssl-dev/libcjson-dev
+# were only ever build-time dependencies and are dropped here.
+FROM dhi.io/debian-base:trixie
+
+COPY --from=runtime_deps /rootfs/ /
+
+# `:trixie` defaults to USER 65532. Mosquitto is still started as root so that
+# the `user mosquitto` directive in mosquitto.conf can drop privileges itself,
+# which is how this image has always behaved. Running the container as 65532
+# outright would additionally require the mounted /mqtt volumes to be owned by
+# that uid, so it is left as a separate change.
+USER 0
+
+# No useradd/groupadd in the runtime variant, so the account is appended to the
+# passwd/group databases directly. 1883 is the mosquitto port, used as the uid
+# for recognisability; the previous image let adduser pick an arbitrary one.
 RUN set -ex; \
-    groupadd mosquitto; \
-    useradd -s /sbin/nologin mosquitto -g mosquitto -d /var/lib/mosquitto; \
-    chown -R mosquitto:mosquitto /var/log/mosquitto/; \
-    chown -R mosquitto:mosquitto /var/lib/mosquitto/
+    printf 'mosquitto:x:1883:\n' >> /etc/group; \
+    printf 'mosquitto:x:1883:1883:mosquitto:/var/lib/mosquitto:/sbin/nologin\n' >> /etc/passwd; \
+    mkdir -p /var/lib/mosquitto /var/log/mosquitto; \
+    chown -R 1883:1883 /var/lib/mosquitto /var/log/mosquitto
 
 #Copy confs, plugin so and mosquitto binary.
 COPY --from=mosquitto_builder /app/mosquitto/ /mosquitto/
@@ -111,14 +139,15 @@ COPY --from=go_auth_builder /app/pw /mosquitto/pw
 COPY --from=go_auth_builder /app/go-auth.so /mosquitto/go-auth.so
 COPY --from=mosquitto_builder /usr/local/sbin/mosquitto /usr/sbin/mosquitto
 
-COPY --from=mosquitto_builder /usr/local/lib/libmosquitto* /usr/local/lib/
+# /usr/local/lib is not on ld.so's default search path, and the runtime variant
+# has neither ldconfig nor an ld.so.cache to put it there, so libmosquitto goes
+# straight into /usr/lib -- a directory ld.so searches on every Debian arch.
+COPY --from=mosquitto_builder /usr/local/lib/libmosquitto* /usr/lib/
 
 COPY --from=mosquitto_builder /usr/local/bin/mosquitto_passwd /usr/bin/mosquitto_passwd
 COPY --from=mosquitto_builder /usr/local/bin/mosquitto_sub /usr/bin/mosquitto_sub
 COPY --from=mosquitto_builder /usr/local/bin/mosquitto_pub /usr/bin/mosquitto_pub
 COPY --from=mosquitto_builder /usr/local/bin/mosquitto_rr /usr/bin/mosquitto_rr
-
-RUN ldconfig;
 
 # Config is rendered at runtime from a template so no secret is baked into the image.
 # entrypoint.sh substitutes ${REDIS_PASSWORD} into mosquitto.conf.template before start.

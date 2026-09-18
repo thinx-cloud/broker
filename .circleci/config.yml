@@ -18,5 +18,12 @@ workflows:
           name: Build and Publish to Docker Hub
           image: thinxcloud/mosquitto
           tag: latest
+          # The Dockerfile's base images live on dhi.io, which rejects anonymous
+          # pulls. Its auth realm delegates to registry.docker.io, so the same
+          # Docker Hub credentials the orb already uses authenticate there too.
+          before_build:
+            - run:
+                name: Log in to dhi.io for the hardened base image
+                command: echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_LOGIN" --password-stdin dhi.io
           context:
             - dockerhub

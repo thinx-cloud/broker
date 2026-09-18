@@ -2,8 +2,9 @@ FROM thinxcloud/mosquitto
 
 LABEL name="thinxcloud/mosquitto" version="2.0.21"
 
-# for early testing
-RUN apt install -y ca-certificates mosquitto-clients
+# The base image is now a Docker Hardened Image with no package manager. It
+# already ships ca-certificates, and the mosquitto_pub/sub/rr clients that
+# mosquitto-clients used to provide are built from source into the parent image.
 
 # mock directory structure for mosquitto data
 # The test config is a template; the inherited entrypoint renders it at start,
