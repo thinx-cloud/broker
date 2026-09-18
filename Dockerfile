@@ -51,8 +51,14 @@ RUN set -ex; \
     make CFLAGS="-Wall -O2 -I/build/lws/include" LDFLAGS="-L/build/lws/lib" WITH_WEBSOCKETS=yes; \
     make install
 
-# Use golang:latest as a builder for the Mosquitto Go Auth plugin.
-FROM golang:latest AS go_auth_builder
+# Builder for the Mosquitto Go Auth plugin. The Go release is pinned rather than
+# floating on golang:latest because it is what ends up recorded as the `stdlib`
+# package in go-auth.so and pw, which is what syft/grype report against.
+# GOTOOLCHAIN=local keeps that pin honest: without it, a dependency whose go.mod
+# asks for a newer release makes Go silently download and build with that
+# toolchain instead, changing the stdlib version in the shipped binaries.
+FROM golang:1.26.6 AS go_auth_builder
+ENV GOTOOLCHAIN=local
 
 ENV CGO_CFLAGS="-I/usr/local/include -fPIC"
 ENV CGO_LDFLAGS="-shared -Wl,-unresolved-symbols=ignore-all"
@@ -86,9 +92,12 @@ WORKDIR /app
 COPY --from=mosquitto_builder /usr/local/include/ /usr/local/include/
 
 COPY ./goauth ./
+# Dependencies come from the committed go.mod/go.sum. This used to run
+# `go get -u ./...` on every build, which floated every dependency to whatever
+# was newest at build time -- unreproducible, and able to drag in a module
+# requiring a newer toolchain than the one pinned above.
 RUN set -ex; \
-    go get -u ./...; \
-    go mod tidy; \
+    go mod download; \
     go build -buildmode=c-archive go-auth.go; \
     go build -buildmode=c-shared -o go-auth.so; \
 	  go build pw-gen/pw.go
