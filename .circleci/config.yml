@@ -18,6 +18,11 @@ workflows:
           name: Build and Publish to Docker Hub
           image: thinxcloud/mosquitto
           tag: latest
+          # Publish only from main. Without this the job runs on every branch,
+          # so any feature-branch push overwrites the production :latest tag.
+          filters:
+            branches:
+              only: main
           # The Dockerfile's base images live on dhi.io, which rejects anonymous
           # pulls. Its auth realm delegates to registry.docker.io, so the same
           # Docker Hub credentials the orb already uses authenticate there too.
