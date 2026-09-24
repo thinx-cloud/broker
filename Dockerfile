@@ -57,7 +57,7 @@ RUN set -ex; \
 # GOTOOLCHAIN=local keeps that pin honest: without it, a dependency whose go.mod
 # asks for a newer release makes Go silently download and build with that
 # toolchain instead, changing the stdlib version in the shipped binaries.
-FROM golang:1.26.6 AS go_auth_builder
+FROM golang:1.26.8 AS go_auth_builder
 ENV GOTOOLCHAIN=local
 
 ENV CGO_CFLAGS="-I/usr/local/include -fPIC"
