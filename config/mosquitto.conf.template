@@ -39,7 +39,8 @@ listener 1884
 protocol websockets
 
 max_keepalive 120
-keepalive_interval 120
+# keepalive_interval is a bridge-only option; outside a `connection` block
+# mosquitto 2.x rejects the whole file with "Invalid bridge configuration".
 
 # This is now disabled, because the go-auth.conf file is merged below
 # include_dir /etc/mosquitto/conf.d
